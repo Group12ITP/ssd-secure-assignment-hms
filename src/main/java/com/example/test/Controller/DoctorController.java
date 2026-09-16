@@ -7,8 +7,14 @@ import com.example.test.Model.Prescription;
 import com.example.test.Service.DoctorService;
 import com.example.test.Service.DoctorAppointmentService;
 import com.example.test.Service.PrescriptionService;
+import com.example.test.Security.SecurityRoles;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -62,6 +68,14 @@ public class DoctorController {
             model.addAttribute("doctor", doctor);
             // persist in session for subsequent pages (appointments, calendar, profile)
             session.setAttribute("doctor", doctor);
+
+            // Establish Spring Security authentication context with DOCTOR role
+            List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(SecurityRoles.ROLE_DOCTOR));
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(doctor.getUsername(), null, authorities);
+            SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(auth);
+            SecurityContextHolder.setContext(securityContext);
+            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
             // Dashboard data
             List<DoctorAppointment> appointments = appointmentService.getAppointmentsByDoctor(doctor.getDoctorId());
             model.addAttribute("appointments", appointments);

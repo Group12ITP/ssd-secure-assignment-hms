@@ -5,7 +5,13 @@ import com.example.test.Model.Pharmacist;
 import com.example.test.Model.Prescription;
 import com.example.test.Service.PharmacistService;
 import com.example.test.Service.PrescriptionService;
+import com.example.test.Security.SecurityRoles;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +66,14 @@ public class AuthController {
             model.addAttribute("pharmacist", pharmacist);
             // remember username for dashboard fetches
             request.getSession().setAttribute("pharmacistUsername", pharmacist.getUsername());
+
+            // Establish Spring Security authentication context with PHARMACIST role
+            List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(SecurityRoles.ROLE_PHARMACIST));
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(pharmacist.getUsername(), null, authorities);
+            SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(auth);
+            SecurityContextHolder.setContext(securityContext);
+            request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
             
             // Get scheduled orders for pharmacist
             List<Prescription> orders = prescriptionService.getActivePrescriptionsForPharmacist();

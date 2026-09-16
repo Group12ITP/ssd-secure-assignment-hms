@@ -20,21 +20,54 @@ public class WebSecurityConfig {
         http
                 .csrf().disable() // disable CSRF for simplicity (enable later for production)
                 .authorizeHttpRequests(auth -> auth
-                        // Public pages (accessible without login)
+                        // 1. Static assets
                         .requestMatchers(
-                                "/pharmacist/register",
-                                "/pharmacist/login",
                                 "/css/**",
                                 "/js/**",
-                                "/images/**"
+                                "/images/**",
+                                "/webjars/**",
+                                "/favicon.ico"
                         ).permitAll()
-                        // Everything else requires authentication
-                        .anyRequest().permitAll()
+
+                        // 2. Public pages, error, and landing
+                        .requestMatchers(
+                                "/",
+                                "/home",
+                                "/logins",
+                                "/registers",
+                                "/contact/**",
+                                "/error"
+                        ).permitAll()
+
+                        // 3. Public authentication endpoints (Login & Register & Logout)
+                        .requestMatchers(
+                                "/doctor/login",
+                                "/doctor/register",
+                                "/pharmacist/login",
+                                "/pharmacist/register",
+                                "/patient/login",
+                                "/patient/register",
+                                "/patient/logout"
+                        ).permitAll()
+
+                        // 4. Role-specific portals
+                        .requestMatchers("/doctor/**").hasRole(SecurityRoles.DOCTOR)
+                        .requestMatchers("/pharmacist/**").hasRole(SecurityRoles.PHARMACIST)
+                        .requestMatchers("/patient/**").hasRole(SecurityRoles.PATIENT)
+
+                        // 5. Fallback: all other requests require authentication
+                        .anyRequest().authenticated()
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) -> res.sendRedirect("/logins"))
+                        .accessDeniedHandler((req, res, e) -> res.sendRedirect("/logins?denied=true"))
                 )
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/pharmacist/login?logout=true")
+                        .logoutSuccessUrl("/logins?logout=true")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
                         .permitAll()
                 );
 

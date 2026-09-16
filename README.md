@@ -1,2 +1,121 @@
-# ssd-secure-assignment-hms
-SE4030 Secure Software Development assignment – Spring Boot Hospital Management System with 7+ vulnerabilities fixed and OAuth2/OpenID Connect login added. Detailed commit history included.
+# SSD – Secure Assignment (Hospital Management System)
+
+## Group Members
+- [Member 1 Name] – [Index Number]
+- [Member 2 Name] – [Index Number]
+- [Member 3 Name] – [Index Number]
+- [Member 4 Name] – [Index Number]
+
+## Original Project
+- Original Repository: `<link-to-original-repo>`
+- Baseline Reference: Commit `cb653ae0c986ed5230f6ef65257978c14c25dd7b` (Imported from original repository; last commit before semester start used as the pre-fix baseline).
+
+## Modified Project
+- Assignment Repository: `<link-to-this-new-repo>`
+
+## Assignment Overview
+This project is an enterprise Hospital Management System (HMS) developed with Spring Boot, Thymeleaf, and Spring Security. As part of the SE4030 Secure Software Development module, a comprehensive white-box source code security audit and threat analysis were conducted against the pre-fix baseline. Seventeen distinct security vulnerabilities across the OWASP Top 10 (2021), OWASP API Top 10, and CWE catalogs were cataloged. A series of isolated, targeted remediation branches are executed to fix each vulnerability progressively, followed by the addition of OAuth2 / OpenID Connect single sign-on authentication.
+
+---
+
+## Vulnerability Summary Table
+
+| ID | Title | OWASP Category | Severity | Status |
+|---|---|---|---|---|
+| **V1** | CSRF Protection Disabled Globally | A01:2021 – Broken Access Control / A05:2021 – Security Misconfiguration | High | Planned (Next) |
+| **V2** | Publicly Accessible Protected Routes (`anyRequest().permitAll()`) | A01:2021 – Broken Access Control | Critical | **Fixed** |
+| **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned |
+| **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned |
+| **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | Planned |
+| **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned |
+| **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
+| **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
+| **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | Planned |
+| **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | Planned |
+| **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
+| **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | Planned |
+| **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
+| **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned |
+| **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned |
+| **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned |
+| **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned |
+
+---
+
+## Detailed Findings
+
+### V2: Publicly Accessible Protected Routes (`anyRequest().permitAll()`)
+- **OWASP Category:** A01:2021 – Broken Access Control (CWE-284: Improper Access Control)
+- **Severity:** Critical
+- **Affected Files:**
+  - `src/main/java/com/example/test/Security/WebSecurityConfig.java`
+  - `src/main/java/com/example/test/Controller/DoctorController.java`
+  - `src/main/java/com/example/test/Controller/AuthController.java`
+  - `src/main/java/com/example/test/Controller/PatientController.java`
+- **Description:**
+  In the baseline `WebSecurityConfig`, the HTTP request authorization chain concluded with `.anyRequest().permitAll()`, despite code comments indicating everything else should require authentication. As a result, all backend routes—including clinical doctor dashboards, patient medical portals, pharmacist queues, and prescription administration—were entirely unauthenticated at the perimeter level.
+- **How It Was Identified:**
+  Manual static code review of `WebSecurityConfig.java` and white-box access control flow mapping.
+- **Exploitation Scenario:**
+  An unauthenticated remote attacker directly navigates to `/doctor/dashboard`, `/pharmacist/dashboard`, or `/patient/dashboard`. Because Spring Security permits all requests, any request bypassing application-level session checks directly exposed internal functionality and medical management interfaces without user credentials.
+- **Fix Applied:**
+  1. Created `SecurityRoles.java` defining standard role constants (`ROLE_DOCTOR`, `ROLE_PHARMACIST`, `ROLE_PATIENT`).
+  2. Replaced `.anyRequest().permitAll()` in `WebSecurityConfig.java` with ordered authorization rules:
+     - Static assets (`/css/**`, `/js/**`, `/images/**`, `/webjars/**`, `/favicon.ico`) &rarr; `permitAll()`
+     - Public landing, error, and info routes (`/`, `/home`, `/logins`, `/registers`, `/contact/**`, `/error`) &rarr; `permitAll()`
+     - Public authentication endpoints (`/doctor/login`, `/doctor/register`, `/pharmacist/login`, `/pharmacist/register`, `/patient/login`, `/patient/register`, `/patient/logout`) &rarr; `permitAll()`
+     - Role-specific portals: `/doctor/**` &rarr; `hasRole("DOCTOR")`, `/pharmacist/**` &rarr; `hasRole("PHARMACIST")`, `/patient/**` &rarr; `hasRole("PATIENT")`
+     - Global fallback: `.anyRequest().authenticated()`
+  3. Added an `AuthenticationEntryPoint` and `AccessDeniedHandler` redirecting unauthenticated and unauthorized requests to `/logins` (and `/logins?denied=true`).
+  4. Updated login controllers (`DoctorController`, `AuthController`, `PatientController`) to bind the authenticated principal and granted authority to the `SecurityContext` upon successful password verification.
+- **Branch:** `fix/V2-enforce-url-authorization`
+- **Commit:** `5a945fa`
+- **Verification:**
+  - Verified project compilation via Maven with JDK 17 (`BUILD SUCCESS`).
+  - Verified that unauthenticated requests to `/doctor/dashboard`, `/pharmacist/dashboard`, and `/patient/dashboard` are intercepted by Spring Security and redirected to `/logins`.
+  - Verified public static assets and landing pages remain accessible without authentication.
+- **Preventive Best Practice:**
+  Adopt a "Deny by Default" access control paradigm in Spring Security. Ensure all endpoints are authenticated by default, explicitly whitelisting only strictly public resources. Implement automated integration tests asserting HTTP 302/401/403 responses on protected endpoints for unauthenticated clients.
+
+---
+
+### Unfixed Vulnerabilities
+*(Will be populated for any vulnerabilities remaining intentionally unfixed after remediation phases)*
+
+---
+
+## OAuth2 / OpenID Connect Implementation
+*(To be implemented on branch `feature/oauth-openid` following completion of vulnerability fixes)*
+- **Provider Used:** Google Identity Services (OpenID Connect)
+- **Grant Type:** Authorization Code Grant with PKCE
+- **Files Changed:** TBD
+- **Branch:** `feature/oauth-openid`
+- **Integration Summary:** TBD
+- **Testing & Verification:** TBD
+
+---
+
+## Tools Used
+- **White-box Review:** Manual source code auditing, Git diff inspection, Maven dependency verification.
+- **Static Analysis (SAST):** Semgrep, IDE security linters.
+- **Software Composition Analysis (SCA):** Maven Dependency-Check.
+- **Dynamic Analysis (DAST):** OWASP ZAP (Zed Attack Proxy) for endpoint interception and parameter testing.
+
+---
+
+## Best Practices to Prevent These Vulnerabilities
+1. **Secure SDLC:** Integrate security checkpoints (threat modeling, architectural reviews, automated scans) at each stage of development.
+2. **Principle of Least Privilege & Default Deny:** Apply least privilege across web access control, database connections, and session management.
+3. **Automated Security Gates in CI/CD:** Mandate SonarQube, Semgrep, and OWASP Dependency-Check passes prior to pull request merges.
+4. **Input Validation and Safe Output Encoding:** Enforce strong Bean Validation (`@Valid`, regex complexity rules) and use contextual encoding/safe DOM manipulation to eliminate injection vectors.
+5. **Continuous Developer Security Training:** Train developers on OWASP Top 10 risks and secure framework idioms.
+
+---
+
+## Commit and Branch Convention
+- One branch per vulnerability: `fix/V<n>-<short-name>`
+- Feature branch for OAuth: `feature/oauth-openid`
+- Commit message format:
+  - Code Fix: `Fix(V<n>): <short description>`
+  - Feature: `Feat: Add Google OAuth2/OpenID Connect login`
+  - Evidence Log Documentation: `Docs: Add V<n> details to README`
