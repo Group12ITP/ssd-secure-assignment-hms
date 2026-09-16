@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Orders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+        }
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: fixed;
+            padding-top: 30px;
+        }
+        .sidebar h4 { font-weight: bold; text-align: center; color: #fff; margin-bottom: 30px; }
+        .sidebar a {
+            display: block; padding: 15px 25px; color: rgba(255,255,255,0.85);
+            text-decoration: none; font-size: 16px; border-left: 4px solid transparent; transition: all 0.3s;
+        }
+        .sidebar a:hover, .sidebar a.active { background-color: rgba(255,255,255,0.1); color: #fff; border-left: 4px solid #fff; }
+        .main-content { margin-left: 280px; padding: 30px; }
+        .order-card { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; transition: all 0.3s; }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.12); }
+        .order-header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; }
+        .order-body { padding: 20px; }
+        .status-badge { padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; background-color: #fff; color: #155724; }
+        .urgent-badge { background: linear-gradient(45deg, #ff6b6b, #ee5a24); color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: 600; }
+        .medicine-item { background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 10px; border-left: 4px solid #007bff; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const containers = document.querySelectorAll('[id^="medicines-"]');
+            containers.forEach(container => {
+                const orderId = container.id.split('-')[1];
+                fetch(`/prescription/api/medicines/${orderId}`)
+                    .then(r => r.json())
+                    .then(list => {
+                        if (!list || list.length === 0) {
+                            container.innerHTML = '<div class="text-muted">No medicines found.</div>';
+                            return;
+                        }
+                        container.innerHTML = list.map(m => `
+                            <div class="medicine-item">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>${m.medicineName || ''}</strong><br>
+                                        <small class="text-muted">${m.genericName || ''} - ${m.strength || ''}</small>
+                                    </div>
+                                    <div class="col-md-2"><strong>Quantity:</strong> ${m.quantity || ''}</div>
+                                    <div class="col-md-3"><strong>Dosage:</strong> ${m.dosage || ''}, ${m.frequency || ''}</div>
+                                    <div class="col-md-3"><strong>Duration:</strong> ${m.duration || ''}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    })
+                    .catch(() => { container.innerHTML = '<div class="text-danger">Failed to load medicines.</div>'; });
+            });
+        });
+    </script>
+</head>
+<body>
+
+<div class="sidebar">
+    <h4><i class="fas fa-pills me-2"></i>Pharmly</h4>
+    <a href="/pharmacist/dashboard"><i class="fas fa-tachometer-alt me-2"></i> Dashboard</a>
+    <a href="/prescription/pharmacist/orders" class="active"><i class="fas fa-prescription-bottle-alt me-2"></i> Scheduled Orders</a>
+    <a href="/pharmacist/inventory"><i class="fas fa-capsules me-2"></i> Medicine Inventory</a>
+    <a href="/pharmacist/patients"><i class="fas fa-users me-2"></i> Patients</a>
+    <a href="/pharmacist/login" class="text-warning mt-3"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
+    
+</div>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="fas fa-clock text-primary me-2"></i>
+                Scheduled Orders
+            </h2>
+            <p class="text-muted mb-0">Status: <span class="badge bg-primary" th:text="${selectedStatus}">Active</span></p>
+        </div>
+        <div class="d-flex gap-2">
+            <form th:action="@{'/prescription/pharmacist/orders'}" method="get" class="d-flex gap-2">
+                <select class="form-select" name="status">
+                    <option th:selected="${selectedStatus=='Active'}">Active</option>
+                    <option th:selected="${selectedStatus=='Processing'}">Processing</option>
+                    <option th:selected="${selectedStatus=='Ready'}">Ready</option>
+                    <option th:selected="${selectedStatus=='Completed'}">Completed</option>
+                </select>
+                <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-filter me-1"></i>Apply</button>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${orders != null and !orders.isEmpty()}">
+        <div th:each="order : ${orders}" class="order-card">
+            <div class="order-header">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="mb-1">
+                            <i class="fas fa-prescription-bottle-alt me-2"></i>
+                            Order #<span th:text="${order.prescriptionId}">12345</span>
+                            <span th:if="${order.isUrgent}" class="urgent-badge ms-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>URGENT
+                            </span>
+                        </h5>
+                        <p class="mb-0 opacity-75">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <span th:text="${#temporals.format(order.prescriptionDate, 'dd MMMM yyyy, hh:mm a')}">15 March 2024, 10:30 AM</span>
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <span class="status-badge" th:text="${order.status}">Active</span>
+                    </div>
+                </div>
+            </div>
+            <div class="order-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-primary mb-2"><i class="fas fa-user me-2"></i>Patient Information</h6>
+                        <p class="mb-1"><strong>Patient ID:</strong> <span th:text="${order.patientId}">12345</span></p>
+                        <p class="mb-1"><strong>Doctor ID:</strong> <span th:text="${order.doctorId}">67890</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success mb-2"><i class="fas fa-stethoscope me-2"></i>Diagnosis</h6>
+                        <p class="mb-0" th:text="${order.diagnosis}">Diagnosis</p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="text-info mb-3"><i class="fas fa-pills me-2"></i>Prescribed Medicines</h6>
+                    <div th:id="${'medicines-' + order.prescriptionId}"></div>
+                    <div class="text-center mt-2">
+                        <a th:href="@{'/prescription/details/' + ${order.prescriptionId}}" class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-eye me-1"></i>View Detailed Medicines
+                        </a>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="btn-group">
+                        <form th:action="@{'/prescription/update-status/' + ${order.prescriptionId}}" method="post" class="me-2">
+                            <input type="hidden" name="status" value="Processing">
+                            <button class="btn btn-primary"><i class="fas fa-cogs me-1"></i>Process</button>
+                        </form>
+                        <form th:action="@{'/prescription/update-status/' + ${order.prescriptionId}}" method="post" class="me-2">
+                            <input type="hidden" name="status" value="Completed">
+                            <button class="btn btn-success"><i class="fas fa-check me-1"></i>Complete</button>
+                        </form>
+                        <a th:href="@{'/prescription/details/' + ${order.prescriptionId}}" class="btn btn-secondary">
+                            <i class="fas fa-eye me-1"></i>View
+                        </a>
+                    </div>
+                    <small class="text-muted"><i class="fas fa-clock me-1"></i><span th:text="${#temporals.format(order.prescriptionDate, 'dd MMM, hh:mm a')}">15 Mar, 10:30 AM</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${orders == null or orders.isEmpty()}" class="text-center py-5">
+        <i class="fas fa-prescription-bottle-alt fa-4x text-muted mb-3"></i>
+        <h4 class="text-muted">No Scheduled Orders</h4>
+        <p class="text-muted">New prescription orders will appear here when doctors issue them.</p>
+    </div>
+</div>
+
+</body>
+</html>
+
+

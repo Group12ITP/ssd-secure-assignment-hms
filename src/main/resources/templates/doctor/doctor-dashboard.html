@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Doctor Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7ff; font-family: 'Inter', sans-serif; }
+        .card { border-radius: 16px; border: 1px solid #e6efff; box-shadow: 0 6px 20px rgba(20, 63, 185, 0.06); }
+        .rounded-12 { border-radius: 12px; }
+        .sidebar { width: 260px; min-height: 100vh; background: #ffffff; border-right: 1px solid #e6efff; position: fixed; top: 0; left: 0; }
+        .sidebar .nav-link { color: #4a5568; padding: 12px 18px; border-radius: 10px; }
+        .sidebar .nav-link.active, .sidebar .nav-link:hover { background: #e8f0ff; color: #1d4ed8; }
+        .main { margin-left: 260px; }
+        .summary-card { background: #ffffff; }
+        .summary-number { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .summary-sub { color: #6b7280; font-size: 12px; }
+        .badge-soft { background: #eef4ff; color: #1d4ed8; }
+        .profile-card { background: linear-gradient(135deg, #2563eb, #06b6d4); color: white; }
+        .table thead th { color: #64748b; font-weight: 600; border-bottom: 1px solid #e6efff; background: #f1f6ff; }
+        .table tbody tr { vertical-align: middle; }
+        .table tbody tr:hover { background: #f9fbff; }
+        .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar p-3">
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width:40px;height:40px;color:#fff;">D</div>
+            <div>
+                <div class="fw-bold" th:text="${doctor.fullName}">Dr. Name</div>
+                <div class="text-muted small" th:text="${doctor.specialization}">Specialization</div>
+            </div>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="/doctor/dashboard">Dashboard</a>
+            <a class="nav-link" href="/doctor/appointments">Appointment</a>
+            <a class="nav-link" href="/doctor/calendar">Calendar</a>
+            <a class="nav-link" href="/doctor/profile">Profile</a>
+            <a class="nav-link" href="/doctor/login">Logout</a>
+        </nav>
+    </div>
+
+    <!-- Main content -->
+    <div class="main w-100">
+        <nav class="navbar navbar-light bg-white border-bottom px-4 py-3">
+            <span class="navbar-brand mb-0 h5">Dashboard</span>
+            <form class="d-flex" role="search">
+                <input class="form-control rounded-12" type="search" placeholder="Search" aria-label="Search">
+            </form>
+        </nav>
+
+        <div class="container-fluid py-4">
+            <!-- Success Alert -->
+            <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>Success!</strong> <span th:text="${param.success}">Action completed successfully.</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+
+            <!-- Summary cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card summary-card p-3">
+                        <div class="text-muted small">Total Appointments</div>
+                        <div class="summary-number" th:text="${totalAppointments}">0</div>
+                        <div class="summary-sub">Till Today</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card summary-card p-3">
+                        <div class="text-muted small">Today Appointments</div>
+                        <div class="summary-number" th:text="${todayAppointmentsCount}">0</div>
+                        <div class="summary-sub" th:text="${#temporals.format(#temporals.createNow(), 'dd MMM yyyy')}">05 Sep 2025</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card summary-card p-3">
+                        <div class="text-muted small">Scheduled</div>
+                        <div class="summary-number" th:text="${scheduledCount}">0</div>
+                        <div class="summary-sub">Upcoming</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card summary-card p-3">
+                        <div class="text-muted small">Completed</div>
+                        <div class="summary-number" th:text="${completedCount}">0</div>
+                        <div class="summary-sub">All time</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile and Today -->
+            <div class="row g-3">
+                <div class="col-lg-8">
+                    <div class="card p-0">
+                        <div class="p-3 border-bottom"><span class="fw-semibold">Today Appointments</span></div>
+                        <div class="p-3">
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Contact</th>
+                                        <th>Time</th>
+                                        <th>Status</th>
+                                        <th>Notes</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr th:each="appt : ${todayAppointments}">
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <img class="avatar" src="https://i.pravatar.cc/100?img=5" alt="avatar">
+                                                <div>
+                                                    <div class="fw-semibold" th:text="${appt.patientName}">Patient Name</div>
+                                                    <div class="text-muted small" th:text="${appt.patientEmail}">email</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td th:text="${appt.contactNumber}"></td>
+                                        <td th:text="${#temporals.format(appt.appointmentDate, 'hh:mm a')}"></td>
+                                        <td>
+                                            <span class="badge" th:classappend="${appt.status == 'Scheduled'} ? ' bg-warning text-dark' : (${appt.status == 'Completed'} ? ' bg-success' : ' bg-secondary')" th:text="${appt.status}"></span>
+                                        </td>
+                                        <td th:text="${appt.notes}"></td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        th:onclick="'completeAppointment(' + ${appt.appointmentId} + ')'"
+                                                        th:if="${appt.status == 'Scheduled'}">
+                                                    <i class="fas fa-check"></i> Complete
+                                                </button>
+                                                <a th:href="@{'/prescription/create/' + ${appt.appointmentId}}" 
+                                                   class="btn btn-sm btn-outline-success"
+                                                   th:if="${appt.status == 'Scheduled'}">
+                                                    <i class="fas fa-prescription-bottle-alt"></i> Prescription
+                                                </a>
+                                                <span class="badge bg-success" th:if="${appt.status == 'Completed'}">
+                                                    <i class="fas fa-check-circle"></i> Completed
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr th:if="${#lists.isEmpty(todayAppointments)}">
+                                        <td colspan="6" class="text-center text-muted">No appointments today</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                    <div class="card p-3">
+                        <div class="fw-semibold mb-2">Upcoming Appointments</div>
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item d-flex justify-content-between align-items-center" th:each="appt : ${appointments}">
+                                <div>
+                                    <div class="fw-semibold" th:text="${appt.patientName}">Patient</div>
+                                    <div class="text-muted small" th:text="${#temporals.format(appt.appointmentDate, 'dd MMM, hh:mm a')}">Time</div>
+                                </div>
+                                <span class="badge badge-soft" th:text="${appt.status}">Scheduled</span>
+                            </div>
+                            <div class="text-muted small text-center p-2" th:if="${#lists.isEmpty(appointments)}">No upcoming appointments</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Prescriptions -->
+            <div class="row mt-4" th:if="${prescriptions != null and !prescriptions.isEmpty()}">
+                <div class="col-12">
+                    <div class="card p-0">
+                        <div class="p-3 border-bottom">
+                            <span class="fw-semibold">Recent Prescriptions</span>
+                        </div>
+                        <div class="p-3">
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Patient</th>
+                                            <th>Diagnosis</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr th:each="prescription : ${prescriptions}">
+                                            <td th:text="${prescription.patientId}">Patient ID</td>
+                                            <td th:text="${prescription.diagnosis}">Diagnosis</td>
+                                            <td th:text="${#temporals.format(prescription.prescriptionDate, 'dd MMM yyyy, hh:mm a')}">Date</td>
+                                            <td>
+                                                <span class="badge" th:classappend="${prescription.status == 'Active'} ? ' bg-success' : ' bg-secondary'" 
+                                                      th:text="${prescription.status}">Status</span>
+                                            </td>
+                                            <td>
+                                                <a th:href="@{'/prescription/patient/' + ${prescription.patientId}}" 
+                                                   class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+<script>
+    function completeAppointment(appointmentId) {
+        if (confirm('Are you sure you want to mark this appointment as completed?')) {
+            fetch(`/doctor/appointment/${appointmentId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Failed to complete appointment');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while completing the appointment');
+            });
+        }
+    }
+</script>
+
+</body>
+</html>

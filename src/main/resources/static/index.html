@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicate - Hospital Management System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            color: #333;
+            line-height: 1.6;
+            background-color: #f9fbfd;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header Styles */
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a73e8;
+        }
+
+        .logo span {
+            color: #1a73e8;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+
+        .nav-links li {
+            margin-left: 30px;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #1a73e8;
+        }
+
+        .book-btn {
+            background-color: #1a3e8a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .book-btn:hover {
+            background-color: #0d2a6b;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #e6f2ff 0%, #f0f8ff 100%);
+            padding: 150px 0 100px;
+            margin-top: 70px;
+        }
+
+        .hero-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .hero-text {
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .hero-text h1 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a3e8a;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero-text p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .hero-btn {
+            background-color: #1a3e8a;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .hero-btn:hover {
+            background-color: #0d2a6b;
+        }
+
+        .hero-image {
+            flex: 1;
+            text-align: center;
+        }
+
+        .hero-image img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Stats Section */
+        .stats {
+            padding: 80px 0;
+            background-color: white;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-card {
+            flex: 1;
+            max-width: 250px;
+            padding: 30px 20px;
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .stat-icon {
+            font-size: 40px;
+            color: #1a73e8;
+            margin-bottom: 15px;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+
+        .stat-text {
+            color: #666;
+            font-size: 16px;
+        }
+
+        /* Services Section */
+        .services {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+        }
+
+        .services-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .services-text {
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .services-text h2 {
+            font-size: 36px;
+            color: #1a3e8a;
+            margin-bottom: 20px;
+        }
+
+        .services-text p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .services-image {
+            flex: 1;
+            text-align: center;
+        }
+
+        .services-image img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Vision Section */
+        .vision {
+            padding: 80px 0;
+            background-color: white;
+        }
+
+        .vision-card {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, #1a73e8 0%, #1a3e8a 100%);
+            color: white;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(26, 115, 232, 0.2);
+        }
+
+        .vision-card h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .vision-card p {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+        /* Team Section */
+        .team {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: #1a3e8a;
+            margin-bottom: 15px;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: #666;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .team-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .team-card {
+            flex: 0 0 30%;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            transition: transform 0.3s;
+        }
+
+        .team-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .team-img {
+            width: 100%;
+            height: 250px;
+            background-color: #e6f2ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: #1a73e8;
+        }
+
+        .team-info {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .team-info h3 {
+            font-size: 20px;
+            margin-bottom: 5px;
+            color: #1a3e8a;
+        }
+
+        .team-info p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .team-social {
+            display: flex;
+            justify-content: center;
+        }
+
+        .team-social a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #e6f2ff;
+            color: #1a73e8;
+            margin: 0 5px;
+            transition: all 0.3s;
+        }
+
+        .team-social a:hover {
+            background-color: #1a73e8;
+            color: white;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+            background-color: white;
+        }
+
+        .features-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .feature-card {
+            flex: 0 0 30%;
+            padding: 30px;
+            border-radius: 15px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            font-size: 40px;
+            color: #1a73e8;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 22px;
+            color: #1a3e8a;
+            margin-bottom: 15px;
+        }
+
+        .feature-card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .feature-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a73e8;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* App Section */
+        .app {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #1a73e8 0%, #1a3e8a 100%);
+            color: white;
+        }
+
+        .app-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .app-text {
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .app-text h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .app-text p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .app-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .app-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 12px 20px;
+            background: white;
+            color: #1a73e8;
+            border-radius: 8px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .app-btn:hover {
+            background: #f0f8ff;
+            transform: translateY(-3px);
+        }
+
+        .app-btn i {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .app-image {
+            flex: 1;
+            text-align: center;
+        }
+
+        .app-image img {
+            max-width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Footer */
+        footer {
+            background-color: #1a3e8a;
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            margin-bottom: 20px;
+        }
+
+        .footer-links li {
+            margin: 0 15px;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: #e6f2ff;
+        }
+
+        .copyright {
+            font-size: 14px;
+            color: #e6f2ff;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .hero-content, .services-content, .app-content {
+                flex-direction: column;
+            }
+
+            .hero-text, .services-text, .app-text {
+                margin-bottom: 40px;
+                text-align: center;
+            }
+
+            .team-card, .feature-card {
+                flex: 0 0 48%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .stats-container, .features-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .stat-card, .feature-card {
+                margin-bottom: 30px;
+                width: 100%;
+                max-width: 350px;
+            }
+
+            .team-card {
+                flex: 0 0 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- Header/Navigation -->
+<header>
+    <div class="container">
+        <nav class="navbar">
+            <div class="logo">+ <span>Medicate</span></div>
+            <ul class="nav-links">
+                <li><a href="#">About</a></li>
+                <li><a href="#">Services</a></li>
+                <li><a href="#">Doctors</a></li>
+                <li><a href="#">Appointments</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+            <button class="book-btn" onclick="window.location.href='/patient/login'">Book Appointment</button>
+        </nav>
+    </div>
+</header>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1>WellCare Nurturing Health, Inspiring Life</h1>
+                <p>Discover the journey to vibrant health and an inspired life with our world-class healthcare services.</p>
+                <button class="hero-btn" onclick="window.location.href='/patient/login'">Book Appointment</button>
+            </div>
+            <div class="hero-image">
+                <!-- Placeholder for doctor image -->
+                <div style="width: 100%; height: 400px; background: linear-gradient(135deg, #a8d0ff 0%, #7ab6ff 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px;">
+                    Diverse Doctors Image
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Statistics Section -->
+<section class="stats">
+    <div class="container">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-number">150%</div>
+                <div class="stat-text">Patient Recovered</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="stat-number">15+</div>
+                <div class="stat-text">Years Experience</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-stethoscope"></i>
+                </div>
+                <div class="stat-number">20+</div>
+                <div class="stat-text">Operation Specialist</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Services Section -->
+<section class="services">
+    <div class="container">
+        <div class="services-content">
+            <div class="services-text">
+                <h2>We Provide a Wide Range of Medical Services</h2>
+                <p>We provide a wide range of medical services and comprehensive healthcare services tailored to your individual needs.</p>
+            </div>
+            <div class="services-image">
+                <!-- Placeholder for doctor image -->
+                <div style="width: 100%; height: 350px; background: linear-gradient(135deg, #a8d0ff 0%, #7ab6ff 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px;">
+                    Confident Doctor Image
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Vision Section -->
+<section class="vision">
+    <div class="container">
+        <div class="vision-card">
+            <h2>Achieving Your Vision</h2>
+            <p>Planning for retirement is essential to ensuring our experienced team at Finovate, our expertise identify you.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Team Section -->
+<section class="team">
+    <div class="container">
+        <div class="section-header">
+            <h2>Highly Qualified Team</h2>
+            <p>Meet our highly qualified doctors</p>
+        </div>
+        <div class="team-container">
+            <div class="team-card">
+                <div class="team-img">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="team-info">
+                    <h3>Sophia Taylor</h3>
+                    <p>Cardiologist</p>
+                    <div class="team-social">
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="team-card">
+                <div class="team-img">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="team-info">
+                    <h3>Jane Adams</h3>
+                    <p>Pediatrician</p>
+                    <div class="team-social">
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="team-card">
+                <div class="team-img">
+                    <i class="fas fa-user-md"></i>
+                </div>
+                <div class="team-info">
+                    <h3>Mike Lee</h3>
+                    <p>Neurologist</p>
+                    <div class="team-social">
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features">
+    <div class="container">
+        <div class="features-container">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-microscope"></i>
+                </div>
+                <h3>Modern Instrument</h3>
+                <p>Embrace joy in a vibrant smile with our state-of-the-art dental care giving you cutting-edge solutions.</p>
+                <!-- Placeholder for doctor image -->
+                <div style="width: 100%; height: 150px; background: linear-gradient(135deg, #a8d0ff 0%, #7ab6ff 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; margin-top: 20px;">
+                    Elderly Doctor Image
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <h3>Easy Billing System</h3>
+                <p>Our billing system is glass clear with cutting-edge Nurses staff.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-user-nurse"></i>
+                </div>
+                <h3>Qualified Nurse & Staff</h3>
+                <p>Intermediate joy and resilient creativity, reliable solutions, and inspiring our work lasting longer years.</p>
+                <div class="feature-stats">
+                    <div class="stat">
+                        <div class="stat-number">265K</div>
+                        <div class="stat-label">Patients</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">96%</div>
+                        <div class="stat-label">Satisfaction</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- App Section -->
+<section class="app">
+    <div class="container">
+        <div class="app-content">
+            <div class="app-text">
+                <h2>Treatment is Easy with Medifye</h2>
+                <p>Under parent clinics it must demonstrate wellbeing and safety, and this has been a vital role in animal comfort and environment improvement.</p>
+                <div class="app-buttons">
+                    <a href="#" class="app-btn">
+                        <i class="fab fa-apple"></i>
+                        <div>
+                            <small>Download on the</small>
+                            <div>App Store</div>
+                        </div>
+                    </a>
+                    <a href="#" class="app-btn">
+                        <i class="fab fa-google-play"></i>
+                        <div>
+                            <small>Get it on</small>
+                            <div>Google Play</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            <div class="app-image">
+                <!-- Placeholder for app image -->
+                <div style="width: 100%; height: 400px; background: linear-gradient(135deg, #a8d0ff 0%, #7ab6ff 100%); border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px;">
+                    Medifye App Interface
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="footer-logo">+ Medicate</div>
+        <ul class="footer-links">
+            <li><a href="#">About</a></li>
+            <li><a href="#">Services</a></li>
+            <li><a href="#">Doctors</a></li>
+            <li><a href="#">Appointments</a></li>
+            <li><a href="#">Contact</a></li>
+        </ul>
+        <div class="copyright">
+            &copy; 2023 Medicate Hospital Management System. All rights reserved.
+        </div>
+    </div>
+</footer>
+</body>
+</html>
