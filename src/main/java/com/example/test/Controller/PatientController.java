@@ -10,7 +10,13 @@ import com.example.test.Repository.DoctorRepository;
 import com.example.test.Repository.PrescriptionRepository;
 import com.example.test.Repository.PrescriptionMedicineRepository;
 import com.example.test.Service.DoctorAppointmentService;
+import com.example.test.Security.SecurityRoles;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -84,6 +90,15 @@ public class PatientController {
         try {
             Patient patient = patientService.loginPatient(username, password);
             session.setAttribute("patient", patient);
+
+            // Establish Spring Security authentication context with PATIENT role
+            List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(SecurityRoles.ROLE_PATIENT));
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(patient.getUsername(), null, authorities);
+            SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
+            securityContext.setAuthentication(auth);
+            SecurityContextHolder.setContext(securityContext);
+            session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, securityContext);
+
             return "redirect:/patient/dashboard";
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());
