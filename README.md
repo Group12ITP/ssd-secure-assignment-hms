@@ -35,8 +35,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | **Fixed** |
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | **Fixed** |
-| **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned (Next) |
-| **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned |
+| **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | **Fixed** |
+| **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned (Next) |
 | **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned |
 | **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned |
 
@@ -384,6 +384,31 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Tested CSV generation with formula strings (e.g. `=1+1`, `@SUM`) and confirmed they are safely prefixed with `'` in the generated CSV output.
 - **Preventive Best Practice:**
   Always sanitize CSV export fields containing free-form user input by neutralizing formula prefix characters (`=`, `+`, `-`, `@`, tab, return) with a prepended single quotation mark (`'`), and wrap string columns in quotes with escaped inner double quotes according to RFC 4180.
+
+---
+
+### V14: CRLF / SMTP Header Injection in Contact Form
+- **OWASP Category:** A03:2021 – Injection (CWE-93, CWE-113)
+- **Severity:** Medium
+- **Affected Files:**
+  - `src/main/java/com/example/test/web/EmailService.java`
+  - `src/main/java/com/example/test/web/ContactController.java`
+- **Description:**
+  The contact inquiry submission endpoint (`POST /contact`) passed user-provided `name`, `email`, and `subject` values straight into `SimpleMailMessage` headers (`setSubject`, `setReplyTo`, and `mail.setText("From: " + name + ...)`). Because incoming values were never validated or stripped of carriage return (`\r`) or line feed (`\n`) characters, an attacker could inject arbitrary SMTP headers (e.g. `Bcc:`, `Cc:`, `To:`) or terminate the header section and inject arbitrary spam email content.
+- **How It Was Identified:**
+  Source code review of email dispatch routines in `EmailService.java` and request handlers in `ContactController.java`.
+- **Exploitation Scenario:**
+  An attacker submits a contact message with `subject` set to `Inquiry\r\nBcc: victim1@example.com,victim2@example.com\r\n\r\nSpam Content`. The mail server interprets the injected CRLF sequences as protocol delimiters, turning the hospital contact system into an open email relay for phishing or spam campaigns.
+- **Fix Applied:**
+  1. Implemented input-level rejection in `ContactController.java` discarding any contact requests whose `name`, `email`, or `subject` contain `\r` or `\n`.
+  2. Implemented defensive sanitization in `EmailService.java` (`sanitizeHeader`) stripping all CRLF sequences from header fields prior to constructing `SimpleMailMessage`.
+- **Branch:** `fix/V14-prevent-email-crlf-injection`
+- **Commit:** `9d0f280`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Tested contact payloads with embedded `\r\n` characters and verified they are rejected by controller validation and sanitized before email header creation.
+- **Preventive Best Practice:**
+  Strip or strictly reject carriage return (`\r` / `0x0D`) and newline (`\n` / `0x0A`) characters from any user input destined for email headers, HTTP headers, or protocol messages.
 
 ---
 
