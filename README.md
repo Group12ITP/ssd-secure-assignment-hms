@@ -26,8 +26,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V2** | Publicly Accessible Protected Routes (`anyRequest().permitAll()`) | A01:2021 – Broken Access Control | Critical | **Fixed** |
 | **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
 | **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
-| **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | Planned (Next) |
-| **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned |
+| **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | **Fixed** |
+| **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned (Next) |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
 | **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | Planned |
@@ -151,6 +151,29 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Tested that navigating to `/pharmacist/dashboard?username=alice` without an active pharmacist session redirects to `/pharmacist/login`.
 - **Preventive Best Practice:**
   Enforce strict session-bound authentication principles. Reject query parameters for identity management and mandate multi-layered access control where both framework security filters and controllers enforce authenticated principal state.
+
+---
+
+### V5: Insecure Direct Object Reference (IDOR) on Patient Profile
+- **OWASP Category:** A01:2021 – Broken Access Control (CWE-639: Authorization Bypass Through User-Controlled Key)
+- **Severity:** High
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/PatientController.java`
+- **Description:**
+  The `showPatientProfile` endpoint (`/patient/profile/{id}`) accepted an arbitrary patient ID path variable and retrieved medical/personal records without verifying caller identity or ensuring the authenticated patient owns the record.
+- **How It Was Identified:**
+  Manual code review of endpoint authorization checks in `PatientController.java`.
+- **Exploitation Scenario:**
+  A logged-in patient or unauthenticated attacker navigates to `/patient/profile/1`, `/patient/profile/2`, exposing other patients' sensitive information including full names, NIC/Passport numbers, home addresses, phone numbers, allergies, chronic medical conditions, medications, and emergency contacts.
+- **Fix Applied:**
+  Updated `showPatientProfile` to validate the active session and compare the requested path `{id}` against the logged-in patient's verified `patientId`. Any mismatch results in access denial and a redirect back to `/patient/dashboard`.
+- **Branch:** `fix/V5-prevent-patient-profile-idor`
+- **Commit:** `d2aa3a7`
+- **Verification:**
+  - Compiled successfully with Maven wrapper (`BUILD SUCCESS`).
+  - Verified that accessing `/patient/profile/{id}` of a different patient ID redirects to dashboard with an access denied message.
+- **Preventive Best Practice:**
+  Always validate that the authenticated identity has explicit authorization to access the specific object reference being requested. Avoid relying on client-provided IDs for authorization decisions.
 
 ---
 
