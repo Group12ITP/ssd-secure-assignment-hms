@@ -128,7 +128,19 @@ public class PatientController {
     }
 
     @GetMapping("/profile/{id}")
-    public String showPatientProfile(@PathVariable Long id, Model model) {
+    public String showPatientProfile(@PathVariable Long id, HttpSession session, Model model) {
+        Object obj = session.getAttribute("patient");
+        if (!(obj instanceof Patient)) {
+            model.addAttribute("error", "Please log in first.");
+            return "redirect:/patient/login";
+        }
+
+        Patient loggedInPatient = (Patient) obj;
+        if (!loggedInPatient.getPatientId().equals(id)) {
+            model.addAttribute("error", "Access denied: You can only view your own profile.");
+            return "redirect:/patient/dashboard";
+        }
+
         try {
             Patient patient = patientService.getPatientById(id);
             model.addAttribute("patient", patient);
@@ -136,7 +148,7 @@ public class PatientController {
             return "patient/patient-profile";
         } catch (Exception e) {
             model.addAttribute("error", e.getMessage());
-            return "redirect:/patient/login";
+            return "redirect:/patient/dashboard";
         }
     }
 
