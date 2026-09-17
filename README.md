@@ -36,8 +36,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | **Fixed** |
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | **Fixed** |
-| **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned (Next) |
-| **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned |
+| **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | **Fixed** |
+| **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned (Next) |
 | **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned |
 
 ---
@@ -409,6 +409,34 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Tested contact payloads with embedded `\r\n` characters and verified they are rejected by controller validation and sanitized before email header creation.
 - **Preventive Best Practice:**
   Strip or strictly reject carriage return (`\r` / `0x0D`) and newline (`\n` / `0x0A`) characters from any user input destined for email headers, HTTP headers, or protocol messages.
+
+---
+
+### V15: Missing Security HTTP Response Headers (CSP, Frame Options)
+- **OWASP Category:** A05:2021 – Security Misconfiguration (CWE-1021, CWE-693)
+- **Severity:** Medium
+- **Affected Files:**
+  - `src/main/java/com/example/test/Security/WebSecurityConfig.java`
+- **Description:**
+  The application omitted critical security headers in HTTP responses. Missing headers included `Content-Security-Policy` (CSP), `X-Frame-Options` (allowing clickjacking attacks via transparent `<iframe>` embedding), `X-Content-Type-Options: nosniff` (leaving the browser vulnerable to MIME sniffing), `Referrer-Policy`, and `Permissions-Policy`.
+- **How It Was Identified:**
+  Static inspection of Spring Security filter chain configuration in `WebSecurityConfig.java` and HTTP response header analysis.
+- **Exploitation Scenario:**
+  An adversary creates a malicious web page framing `http://localhost:8081/doctor/dashboard` or `/pharmacist/dashboard` inside an invisible iframe, overlaying enticing decoy buttons to trick an authenticated healthcare professional into approving prescriptions or modifying medical records (Clickjacking / UI Redressing).
+- **Fix Applied:**
+  Configured explicit security response headers in `SecurityFilterChain`:
+  1. `X-Frame-Options: DENY` to eliminate frame-embedding and clickjacking vectors.
+  2. `X-Content-Type-Options: nosniff` to enforce strict MIME-type checking.
+  3. Strict `Content-Security-Policy` restricting script, style, font, connect, and image sources.
+  4. `Referrer-Policy: strict-origin-when-cross-origin`.
+  5. `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
+- **Branch:** `fix/V15-add-security-headers`
+- **Commit:** `4fd032f`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed headers `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Content-Security-Policy` are appended to HTTP responses.
+- **Preventive Best Practice:**
+  Always enable and fine-tune browser security headers as part of default defense-in-depth architecture. Enforce a robust Content Security Policy, disallow unnecessary iframe embedding, and mandate strict MIME-type adherence.
 
 ---
 
