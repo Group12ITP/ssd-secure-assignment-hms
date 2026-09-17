@@ -341,25 +341,53 @@
                     container.innerHTML = '<div class="text-muted">No medicines found.</div>';
                     return;
                 }
-                container.innerHTML = list.map(m => `
-                    <div class="medicine-item">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <strong>${m.medicineName || ''}</strong><br>
-                                <small class="text-muted">${m.genericName || ''} - ${m.strength || ''}</small>
-                            </div>
-                            <div class="col-md-2">
-                                <strong>Quantity:</strong> ${m.quantity || ''}
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Dosage:</strong> ${m.dosage || ''}, ${m.frequency || ''}
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Duration:</strong> ${m.duration || ''}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
+                container.innerHTML = '';
+                list.forEach(m => {
+                    const item = document.createElement('div');
+                    item.className = 'medicine-item';
+
+                    const row = document.createElement('div');
+                    row.className = 'row';
+
+                    const col1 = document.createElement('div');
+                    col1.className = 'col-md-4';
+                    const strong = document.createElement('strong');
+                    strong.textContent = m.medicineName || '';
+                    const small = document.createElement('small');
+                    small.className = 'text-muted';
+                    small.textContent = (m.genericName || '') + ' - ' + (m.strength || '');
+                    col1.appendChild(strong);
+                    col1.appendChild(document.createElement('br'));
+                    col1.appendChild(small);
+
+                    const col2 = document.createElement('div');
+                    col2.className = 'col-md-2';
+                    const qStrong = document.createElement('strong');
+                    qStrong.textContent = 'Quantity: ';
+                    col2.appendChild(qStrong);
+                    col2.appendChild(document.createTextNode(m.quantity != null ? m.quantity : ''));
+
+                    const col3 = document.createElement('div');
+                    col3.className = 'col-md-3';
+                    const dStrong = document.createElement('strong');
+                    dStrong.textContent = 'Dosage: ';
+                    col3.appendChild(dStrong);
+                    col3.appendChild(document.createTextNode((m.dosage || '') + ', ' + (m.frequency || '')));
+
+                    const col4 = document.createElement('div');
+                    col4.className = 'col-md-3';
+                    const durStrong = document.createElement('strong');
+                    durStrong.textContent = 'Duration: ';
+                    col4.appendChild(durStrong);
+                    col4.appendChild(document.createTextNode(m.duration || ''));
+
+                    row.appendChild(col1);
+                    row.appendChild(col2);
+                    row.appendChild(col3);
+                    row.appendChild(col4);
+                    item.appendChild(row);
+                    container.appendChild(item);
+                });
             })
             .catch(() => {
                 container.innerHTML = '<div class="text-danger">Failed to load medicines.</div>';
