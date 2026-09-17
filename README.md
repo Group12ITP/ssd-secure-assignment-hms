@@ -27,13 +27,13 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
 | **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
 | **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | **Fixed** |
-| **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned (Next) |
+| **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
 | **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | Planned |
 | **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | Planned |
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
-| **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | Planned |
+| **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | Planned (Next) |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned |
 | **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned |
@@ -174,6 +174,32 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Verified that accessing `/patient/profile/{id}` of a different patient ID redirects to dashboard with an access denied message.
 - **Preventive Best Practice:**
   Always validate that the authenticated identity has explicit authorization to access the specific object reference being requested. Avoid relying on client-provided IDs for authorization decisions.
+
+---
+
+### V6: Broken Object Level Authorization (BOLA/IDOR) on Prescriptions
+- **OWASP Category:** A01:2021 – Broken Access Control (OWASP API1:2023 – Broken Object Level Authorization, CWE-639)
+- **Severity:** High
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/PrescriptionController.java`
+- **Description:**
+  Prescription creation (`/prescription/create/{appointmentId}` and `POST /prescription/create`), patient prescription history (`/prescription/patient/{patientId}`), full prescription details (`/prescription/details/{prescriptionId}`), and prescription fulfillment status updates (`POST /prescription/update-status/{prescriptionId}`) lacked caller authorization and relationship checks. Any requester could view or mutate arbitrary prescription records across the hospital.
+- **How It Was Identified:**
+  Manual static code review and endpoint authorization flow mapping in `PrescriptionController.java`.
+- **Exploitation Scenario:**
+  An unauthorized user sends `POST /prescription/update-status/1?status=Cancelled` to alter medical treatment states, or navigates to `/prescription/details/1` to view private medication regiments, dosages, and clinical diagnoses of patients treated by other clinicians.
+- **Fix Applied:**
+  1. Enforced doctor session verification and appointment ownership verification in `showCreatePrescriptionForm` and `createPrescription`, binding `prescription.doctorId` strictly to the logged-in doctor.
+  2. Restricted `/prescription/patient/{patientId}` so patients may only access their own prescriptions, while doctors and pharmacists retain authorized clinical access.
+  3. Added object-level ownership checks on `/prescription/details/{prescriptionId}` ensuring patients only view their own prescriptions and doctors only view prescriptions they authored.
+  4. Restricted `/prescription/update-status/{prescriptionId}` and `/pharmacist/orders` exclusively to verified pharmacist sessions.
+- **Branch:** `fix/V6-prevent-prescription-bola-idor`
+- **Commit:** `01bf952`
+- **Verification:**
+  - Compiled successfully with Maven wrapper (`BUILD SUCCESS`).
+  - Verified that unauthorized access attempts across patient, doctor, and status update endpoints are rejected and redirected appropriately.
+- **Preventive Best Practice:**
+  Implement contextual authorization checks at the service and controller layers. Validate that the requesting user possesses the requisite role and a legitimate relationship (author, patient owner, or assigned pharmacist) to the specific database record being accessed.
 
 ---
 

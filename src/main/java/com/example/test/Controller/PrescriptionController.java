@@ -1,6 +1,8 @@
 package com.example.test.Controller;
 
+import com.example.test.Model.Doctor;
 import com.example.test.Model.Medicine;
+import com.example.test.Model.Patient;
 import com.example.test.Model.Prescription;
 import com.example.test.Model.PrescriptionMedicine;
 import com.example.test.Service.MedicineService;
@@ -48,12 +50,26 @@ public class PrescriptionController {
     }
 
     @GetMapping("/create/{appointmentId}")
-    public String showCreatePrescriptionForm(@PathVariable Long appointmentId, Model model) {
+    public String showCreatePrescriptionForm(@PathVariable Long appointmentId, HttpServletRequest request, Model model) {
         try {
+            // Verify doctor authentication
+            Object doctorObj = request.getSession().getAttribute("doctor");
+            if (!(doctorObj instanceof Doctor)) {
+                model.addAttribute("error", "Please log in as a doctor to create prescriptions.");
+                return "redirect:/doctor/login";
+            }
+            Doctor loggedDoctor = (Doctor) doctorObj;
+
             // Get appointment details
             var appointment = appointmentService.getAppointmentById(appointmentId);
             if (appointment == null) {
                 model.addAttribute("error", "Appointment not found");
+                return "redirect:/doctor/dashboard";
+            }
+
+            // Verify doctor owns this appointment
+            if (!loggedDoctor.getDoctorId().equals(appointment.getDoctorId())) {
+                model.addAttribute("error", "Access denied: You can only create prescriptions for your own appointments.");
                 return "redirect:/doctor/dashboard";
             }
 
@@ -89,6 +105,14 @@ public class PrescriptionController {
                                      Model model,
                                      HttpServletRequest request) {
         try {
+            // Verify doctor authentication
+            Object doctorObj = request.getSession().getAttribute("doctor");
+            if (!(doctorObj instanceof Doctor)) {
+                model.addAttribute("error", "Please log in as a doctor to create prescriptions.");
+                return "redirect:/doctor/login";
+            }
+            Doctor loggedDoctor = (Doctor) doctorObj;
+            prescription.setDoctorId(loggedDoctor.getDoctorId());
             System.out.println("=== PRESCRIPTION CREATION DEBUG ===");
             System.out.println("Prescription data received:");
             System.out.println("Doctor ID: " + prescription.getDoctorId());
@@ -234,7 +258,22 @@ public class PrescriptionController {
     }
 
     @GetMapping("/patient/{patientId}")
-    public String getPatientPrescriptions(@PathVariable Long patientId, Model model) {
+    public String getPatientPrescriptions(@PathVariable Long patientId, HttpServletRequest request, Model model) {
+        Object patientObj = request.getSession().getAttribute("patient");
+        Object doctorObj = request.getSession().getAttribute("doctor");
+        Object pharmacistObj = request.getSession().getAttribute("pharmacistUsername");
+
+        if (patientObj instanceof Patient) {
+            Patient p = (Patient) patientObj;
+            if (!p.getPatientId().equals(patientId)) {
+                model.addAttribute("error", "Access denied: You can only view your own prescriptions.");
+                return "redirect:/patient/dashboard";
+            }
+        } else if (doctorObj == null && pharmacistObj == null) {
+            model.addAttribute("error", "Please log in to view prescriptions.");
+            return "redirect:/logins";
+        }
+
         List<Prescription> prescriptions = prescriptionService.getPrescriptionsByPatient(patientId);
         model.addAttribute("prescriptions", prescriptions);
         model.addAttribute("patientId", patientId);
@@ -242,11 +281,32 @@ public class PrescriptionController {
     }
 
     @GetMapping("/details/{prescriptionId}")
-    public String getPrescriptionDetails(@PathVariable Long prescriptionId, Model model) {
+    public String getPrescriptionDetails(@PathVariable Long prescriptionId, HttpServletRequest request, Model model) {
         Prescription prescription = prescriptionService.getPrescriptionById(prescriptionId).orElse(null);
         if (prescription == null) {
             model.addAttribute("error", "Prescription not found");
             return "redirect:/doctor/dashboard";
+        }
+
+        Object patientObj = request.getSession().getAttribute("patient");
+        Object doctorObj = request.getSession().getAttribute("doctor");
+        Object pharmacistObj = request.getSession().getAttribute("pharmacistUsername");
+
+        if (patientObj instanceof Patient) {
+            Patient p = (Patient) patientObj;
+            if (!p.getPatientId().equals(prescription.getPatientId())) {
+                model.addAttribute("error", "Access denied: You cannot view another patient's prescription.");
+                return "redirect:/patient/dashboard";
+            }
+        } else if (doctorObj instanceof Doctor) {
+            Doctor d = (Doctor) doctorObj;
+            if (!d.getDoctorId().equals(prescription.getDoctorId())) {
+                model.addAttribute("error", "Access denied: You cannot view another doctor's prescription.");
+                return "redirect:/doctor/dashboard";
+            }
+        } else if (pharmacistObj == null) {
+            model.addAttribute("error", "Please log in first.");
+            return "redirect:/logins";
         }
 
         List<PrescriptionMedicine> medicines = prescriptionMedicineService.getMedicinesByPrescription(prescriptionId);
@@ -256,7 +316,11 @@ public class PrescriptionController {
     }
 
     @GetMapping("/pharmacist/orders")
-    public String getPharmacistOrders(@RequestParam(required = false) String status, Model model) {
+    public String getPharmacistOrders(@RequestParam(required = false) String status, HttpServletRequest request, Model model) {
+        Object pharmacistObj = request.getSession().getAttribute("pharmacistUsername");
+        if (!(pharmacistObj instanceof String) || ((String) pharmacistObj).isBlank()) {
+            return "redirect:/pharmacist/login";
+        }
         List<Prescription> orders;
         if (status == null || status.trim().isEmpty()) {
             orders = prescriptionService.getActivePrescriptionsForPharmacist();
@@ -272,14 +336,26 @@ public class PrescriptionController {
     // Lightweight API for pharmacist dashboard to fetch medicines as JSON
     @GetMapping("/api/medicines/{prescriptionId}")
     @ResponseBody
-    public List<PrescriptionMedicine> getPrescriptionMedicinesJson(@PathVariable Long prescriptionId) {
+    public List<PrescriptionMedicine> getPrescriptionMedicinesJson(@PathVariable Long prescriptionId, HttpServletRequest request) {
+        Object pharmacistObj = request.getSession().getAttribute("pharmacistUsername");
+        Object doctorObj = request.getSession().getAttribute("doctor");
+        if (pharmacistObj == null && doctorObj == null) {
+            return new ArrayList<>();
+        }
         return prescriptionMedicineService.getMedicinesByPrescription(prescriptionId);
     }
 
     @PostMapping("/update-status/{prescriptionId}")
     public String updatePrescriptionStatus(@PathVariable Long prescriptionId,
                                            @RequestParam String status,
+                                           HttpServletRequest request,
                                            Model model) {
+        Object pharmacistObj = request.getSession().getAttribute("pharmacistUsername");
+        if (!(pharmacistObj instanceof String) || ((String) pharmacistObj).isBlank()) {
+            model.addAttribute("error", "Access denied: Only pharmacists can update prescription status.");
+            return "redirect:/pharmacist/login";
+        }
+
         try {
             prescriptionService.updatePrescriptionStatus(prescriptionId, status);
             model.addAttribute("success", "Prescription status updated successfully!");
