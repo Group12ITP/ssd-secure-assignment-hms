@@ -31,6 +31,14 @@ public class ContactController {
                                 @RequestParam("message") String message,
                                 RedirectAttributes redirectAttributes) {
         try {
+            // Reject any attempted header injection containing CR/LF characters
+            if (name.contains("\r") || name.contains("\n") ||
+                email.contains("\r") || email.contains("\n") ||
+                (subject != null && (subject.contains("\r") || subject.contains("\n")))) {
+                redirectAttributes.addAttribute("error", 1);
+                return "redirect:/home";
+            }
+
             emailService.sendContactMail(name, email, subject, message);
             redirectAttributes.addAttribute("success", 1);
         } catch (Exception ex) {
