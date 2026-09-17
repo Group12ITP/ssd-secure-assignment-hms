@@ -15,23 +15,17 @@ public class PrescriptionService {
     @Autowired
     private PrescriptionRepository prescriptionRepository;
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PrescriptionService.class);
+
     public Prescription createPrescription(Prescription prescription) {
         try {
-            System.out.println("=== PRESCRIPTION SERVICE DEBUG ===");
-            System.out.println("Creating prescription with data: " + prescription);
-            
             prescription.setPrescriptionDate(LocalDateTime.now());
             prescription.setStatus("Active");
-            
-            System.out.println("Prescription before save: " + prescription);
             Prescription saved = prescriptionRepository.save(prescription);
-            System.out.println("Prescription after save: " + saved);
-            System.out.println("Saved prescription ID: " + saved.getPrescriptionId());
-            
+            logger.info("Created prescription successfully with ID: {}", saved.getPrescriptionId());
             return saved;
         } catch (Exception e) {
-            System.err.println("Error in PrescriptionService.createPrescription: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error in PrescriptionService.createPrescription: {}", e.getMessage(), e);
             throw e;
         }
     }

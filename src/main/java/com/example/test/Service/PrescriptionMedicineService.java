@@ -51,13 +51,12 @@ public class PrescriptionMedicineService {
         return prescriptionMedicineRepository.findActivePrescriptionMedicines();
     }
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(PrescriptionMedicineService.class);
+
     public PrescriptionMedicine createPrescriptionMedicine(Long prescriptionId, Long medicineId, 
                                                           String dosage, String frequency, 
                                                           String duration, String instructions) {
         try {
-            System.out.println("=== PRESCRIPTION MEDICINE SERVICE DEBUG ===");
-            System.out.println("Creating prescription medicine - Prescription ID: " + prescriptionId + ", Medicine ID: " + medicineId);
-            
             // Get medicine details
             Optional<Medicine> medicineOpt = medicineRepository.findById(medicineId);
             if (!medicineOpt.isPresent()) {
@@ -65,7 +64,6 @@ public class PrescriptionMedicineService {
             }
             
             Medicine medicine = medicineOpt.get();
-            System.out.println("Found medicine: " + medicine.getMedicineName());
             
             // Create prescription medicine
             PrescriptionMedicine prescriptionMedicine = new PrescriptionMedicine();
@@ -89,15 +87,12 @@ public class PrescriptionMedicineService {
             Double totalPrice = quantity * (medicine.getUnitPrice() != null ? medicine.getUnitPrice() : 0.0);
             prescriptionMedicine.setTotalPrice(totalPrice);
             
-            System.out.println("Prescription medicine before save: " + prescriptionMedicine);
             PrescriptionMedicine saved = prescriptionMedicineRepository.save(prescriptionMedicine);
-            System.out.println("Prescription medicine after save: " + saved);
-            System.out.println("Saved prescription medicine ID: " + saved.getPrescriptionMedicineId());
+            logger.debug("Saved prescription medicine ID: {}", saved.getPrescriptionMedicineId());
             
             return saved;
         } catch (Exception e) {
-            System.err.println("Error creating prescription medicine: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error creating prescription medicine: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create prescription medicine: " + e.getMessage());
         }
     }

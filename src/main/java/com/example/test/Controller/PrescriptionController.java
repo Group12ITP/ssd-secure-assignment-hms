@@ -26,9 +26,14 @@ import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Controller
 @RequestMapping("/prescription")
 public class PrescriptionController {
+
+    private static final Logger logger = LoggerFactory.getLogger(PrescriptionController.class);
 
     @Autowired
     private PrescriptionService prescriptionService;
@@ -113,16 +118,7 @@ public class PrescriptionController {
             }
             Doctor loggedDoctor = (Doctor) doctorObj;
             prescription.setDoctorId(loggedDoctor.getDoctorId());
-            System.out.println("=== PRESCRIPTION CREATION DEBUG ===");
-            System.out.println("Prescription data received:");
-            System.out.println("Doctor ID: " + prescription.getDoctorId());
-            System.out.println("Patient ID: " + prescription.getPatientId());
-            System.out.println("Appointment ID: " + prescription.getAppointmentId());
-            System.out.println("Diagnosis: " + prescription.getDiagnosis());
-            System.out.println("Symptoms: " + prescription.getSymptoms());
-            System.out.println("Notes: " + prescription.getNotes());
-            System.out.println("Status: " + prescription.getStatus());
-            System.out.println("Is Urgent: " + prescription.getIsUrgent());
+            logger.info("Processing prescription creation for appointment ID: {}", prescription.getAppointmentId());
 
             // Validate required fields
             if (prescription.getDiagnosis() == null || prescription.getDiagnosis().trim().isEmpty()) {
@@ -173,11 +169,11 @@ public class PrescriptionController {
 
             // Create the prescription
             Prescription savedPrescription = prescriptionService.createPrescription(prescription);
-            System.out.println("Saved prescription ID: " + savedPrescription.getPrescriptionId());
+            logger.info("Saved prescription ID: {}", savedPrescription.getPrescriptionId());
 
             // Save prescription medicines if provided
             if (medicineIds != null && medicineIds.length > 0) {
-                System.out.println("Processing " + medicineIds.length + " medicines...");
+                logger.debug("Processing {} medicines for prescription ID: {}", medicineIds.length, savedPrescription.getPrescriptionId());
                 for (int i = 0; i < medicineIds.length; i++) {
                     try {
                         String dosage = (dosages != null && i < dosages.length && dosages[i] != null && !dosages[i].trim().isEmpty())
@@ -189,9 +185,7 @@ public class PrescriptionController {
                         String instruction = (instructions != null && i < instructions.length && instructions[i] != null)
                                 ? instructions[i] : "";
 
-                        System.out.println("Creating medicine " + (i+1) + ": ID=" + medicineIds[i] + ", dosage=" + dosage);
-
-                        PrescriptionMedicine pm = prescriptionMedicineService.createPrescriptionMedicine(
+                        prescriptionMedicineService.createPrescriptionMedicine(
                                 savedPrescription.getPrescriptionId(),
                                 medicineIds[i],
                                 dosage,
@@ -199,10 +193,8 @@ public class PrescriptionController {
                                 duration,
                                 instruction
                         );
-                        System.out.println("Created prescription medicine: " + pm.getPrescriptionMedicineId());
                     } catch (Exception e) {
-                        System.err.println("Error creating prescription medicine " + (i+1) + ": " + e.getMessage());
-                        e.printStackTrace();
+                        logger.error("Error creating prescription medicine item {}: {}", i + 1, e.getMessage());
                         // Continue with other medicines
                     }
                 }
@@ -210,36 +202,27 @@ public class PrescriptionController {
                 // Calculate and update total amount
                 try {
                     Double totalAmount = prescriptionMedicineService.getTotalPriceByPrescription(savedPrescription.getPrescriptionId());
-                    System.out.println("Total amount calculated: " + totalAmount);
                     if (totalAmount != null) {
                         savedPrescription.setTotalAmount(totalAmount);
                         prescriptionService.updatePrescription(savedPrescription);
-                        System.out.println("Updated prescription with total amount: " + totalAmount);
                     }
                 } catch (Exception e) {
-                    System.err.println("Error calculating total amount: " + e.getMessage());
-                    e.printStackTrace();
+                    logger.error("Error calculating total amount for prescription: {}", e.getMessage());
                 }
-            } else {
-                System.out.println("No medicines provided for prescription");
             }
 
             // Update appointment status to completed
             try {
                 appointmentService.updateAppointmentStatus(prescription.getAppointmentId(), "Completed");
-                System.out.println("Updated appointment status to Completed");
             } catch (Exception e) {
-                System.err.println("Error updating appointment status: " + e.getMessage());
-                e.printStackTrace();
+                logger.error("Error updating appointment status: {}", e.getMessage());
             }
 
-            System.out.println("=== PRESCRIPTION CREATION SUCCESS ===");
+            logger.info("Prescription creation completed successfully for appointment ID: {}", prescription.getAppointmentId());
             return "redirect:/doctor/dashboard?success=Prescription%20created%20successfully";
 
         } catch (Exception e) {
-            System.err.println("=== PRESCRIPTION CREATION ERROR ===");
-            System.err.println("Error creating prescription: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Prescription creation error: {}", e.getMessage(), e);
             model.addAttribute("error", "Failed to create prescription: " + e.getMessage());
 
             // Return to the form with error message
