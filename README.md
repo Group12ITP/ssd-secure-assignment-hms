@@ -38,7 +38,7 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | **Fixed** |
 | **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | **Fixed** |
 | **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | **Fixed** |
-| **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned (Next) |
+| **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | **Fixed** |
 
 ---
 
@@ -466,8 +466,40 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 
 ---
 
+### V17: Weak Password Policy & Missing Complexity Validation
+- **OWASP Category:** A07:2021 – Identification & Authentication Failures (CWE-521)
+- **Severity:** Low
+- **Affected Files:**
+  - `src/main/java/com/example/test/Security/PasswordValidator.java`
+  - `src/main/java/com/example/test/Model/Patient.java`
+  - `src/main/java/com/example/test/Model/Doctor.java`
+  - `src/main/java/com/example/test/Model/Pharmacist.java`
+  - `src/main/java/com/example/test/Service/PatientService.java`
+  - `src/main/java/com/example/test/Service/DoctorService.java`
+  - `src/main/java/com/example/test/Service/PharmacistService.java`
+- **Description:**
+  User registration across patient, doctor, and pharmacist portals only checked that the password was not blank (`@NotBlank`). No minimum length, character composition, or complexity rules were enforced. Users could register with trivial passwords (e.g. single-character or common dictionaries), making accounts vulnerable to credential stuffing, dictionary attacks, and brute-force cracking.
+- **How It Was Identified:**
+  Source code auditing of entity validation constraints and service registration methods.
+- **Exploitation Scenario:**
+  An adversary conducts automated dictionary or brute-force attacks against portal login endpoints. Because accounts were allowed to register with short, weak passwords like `123` or `admin`, passwords are easily guessed within seconds, compromising doctor and patient accounts.
+- **Fix Applied:**
+  1. Created `PasswordValidator.java` enforcing NIST SP 800-63B / OWASP aligned password complexity: minimum length of 8 characters, requiring at least one uppercase letter (`A-Z`), one lowercase letter (`a-z`), one digit (`0-9`), and one special character (`!@#$%^&*...`).
+  2. Applied `@Size(min = 8, max = 100)` constraints to the `password` field on `Patient`, `Doctor`, and `Pharmacist` entities.
+  3. Integrated `PasswordValidator.validatePassword()` into `PatientService.registerPatient`, `DoctorService.registerDoctor`, and `PharmacistService.registerPharmacist` prior to BCrypt password hashing, returning clear validation feedback to the user on non-compliant inputs.
+- **Branch:** `fix/V17-enforce-password-complexity`
+- **Commit:** `67faddb`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed registration rejects weak passwords (e.g., `short`, `password`, `12345678`) with descriptive error messages.
+  - Confirmed compliant passwords pass validation and are safely hashed with BCrypt.
+- **Preventive Best Practice:**
+  Enforce strong password composition and length requirements adhering to NIST SP 800-63B guidelines. Validate passwords on both client and server before applying irreversible one-way cryptographic salting and hashing (e.g., BCrypt, Argon2id).
+
+---
+
 ### Unfixed Vulnerabilities
-*(Will be populated for any vulnerabilities remaining intentionally unfixed after remediation phases)*
+*None. All 17 identified vulnerabilities (V1 through V17) across OWASP Top 10 categories have been remediated, verified, and merged into `security-fixes`.*
 
 ---
 

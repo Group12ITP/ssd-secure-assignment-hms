@@ -16,6 +16,9 @@ public class PharmacistService {
 
     // Register a new pharmacist
     public Pharmacist registerPharmacist(Pharmacist pharmacist) {
+        // Enforce strong password complexity policy
+        com.example.test.Security.PasswordValidator.validatePassword(pharmacist.getPassword());
+
         if (pharmacistRepository.findByEmail(pharmacist.getEmail()) != null)
             throw new RuntimeException("Email already exists!");
 
