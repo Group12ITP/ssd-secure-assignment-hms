@@ -19,16 +19,28 @@ public class EmailService {
         this.mailSender = mailSender;
     }
 
+    private String sanitizeHeader(String header) {
+        if (header == null) {
+            return "";
+        }
+        // Strip CRLF characters to prevent SMTP / Email header injection (CWE-93)
+        return header.replaceAll("[\\r\\n]", " ").trim();
+    }
+
     public void sendContactMail(String name, String email, String subject, String message) {
+        String cleanName = sanitizeHeader(name);
+        String cleanEmail = sanitizeHeader(email);
+        String cleanSubject = sanitizeHeader(subject);
+
         SimpleMailMessage mail = new SimpleMailMessage();
         mail.setTo(toAddress);
-        mail.setSubject(subject == null || subject.isBlank() ? "New contact message" : subject);
-        mail.setText("From: " + name + " <" + email + ">\n\n" + message);
-        if (email != null && !email.isBlank()) {
-            mail.setReplyTo(email);
+        mail.setSubject(cleanSubject.isBlank() ? "New contact message" : cleanSubject);
+        mail.setText("From: " + cleanName + " <" + cleanEmail + ">\n\n" + (message != null ? message : ""));
+        if (!cleanEmail.isBlank()) {
+            mail.setReplyTo(cleanEmail);
         }
         if (fromAddress != null && !fromAddress.isBlank()) {
-            mail.setFrom(fromAddress);
+            mail.setFrom(sanitizeHeader(fromAddress));
         }
         mailSender.send(mail);
     }
