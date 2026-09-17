@@ -24,8 +24,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 |---|---|---|---|---|
 | **V1** | CSRF Protection Disabled Globally | A01:2021 – Broken Access Control / A05:2021 – Security Misconfiguration | High | **Fixed** |
 | **V2** | Publicly Accessible Protected Routes (`anyRequest().permitAll()`) | A01:2021 – Broken Access Control | Critical | **Fixed** |
-| **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned (Next) |
-| **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned |
+| **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
+| **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned (Next) |
 | **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | Planned |
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
@@ -103,6 +103,29 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Verified public static assets and landing pages remain accessible without authentication.
 - **Preventive Best Practice:**
   Adopt a "Deny by Default" access control paradigm in Spring Security. Ensure all endpoints are authenticated by default, explicitly whitelisting only strictly public resources. Implement automated integration tests asserting HTTP 302/401/403 responses on protected endpoints for unauthenticated clients.
+
+---
+
+### V3: Authentication Bypass via URL Parameter in Doctor Portal
+- **OWASP Category:** A07:2021 – Identification & Authentication Failures / A01:2021 – Broken Access Control (CWE-287: Improper Authentication, CWE-306: Missing Authentication for Critical Function)
+- **Severity:** Critical
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/DoctorController.java`
+- **Description:**
+  `DoctorController` inspected `@RequestParam(required = false) String username` in `showDashboard`, `listAppointments`, `calendar`, and `profile`. If no active session was present, the application invoked `doctorService.getDoctorByUsername(username)` and automatically established an active doctor session (`session.setAttribute("doctor", doctor)`), completely bypassing password verification.
+- **How It Was Identified:**
+  Manual static code review and control flow analysis of `DoctorController.java`.
+- **Exploitation Scenario:**
+  An attacker navigates to `/doctor/dashboard?username=sarah.johnson`. The application loads Dr. Sarah Johnson's entity, stores it into the HTTP session without authenticating credentials, and displays confidential appointments, schedules, and clinical dashboard metrics.
+- **Fix Applied:**
+  Removed all `username` request parameter parsing and parameter-based session population across `showDashboard`, `listAppointments`, `calendar`, and `profile` in `DoctorController.java`. User identity is strictly resolved from the authenticated session context, redirecting unauthenticated requests to `/doctor/login`.
+- **Branch:** `fix/V3-prevent-doctor-auth-bypass`
+- **Commit:** `a1c0398`
+- **Verification:**
+  - Verified compilation with Maven wrapper and JDK 17 (`BUILD SUCCESS`).
+  - Verified that requesting `/doctor/dashboard?username=sarah.johnson` without an authenticated session fails to grant access and redirects to `/doctor/login`.
+- **Preventive Best Practice:**
+  Never use client-supplied query parameters or request headers as proof of identity. Authenticate credentials once via a trusted authentication provider and maintain identity strictly in cryptographically secure, server-side session contexts or signed tokens.
 
 ---
 
