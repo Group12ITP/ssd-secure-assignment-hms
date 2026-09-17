@@ -35,20 +35,19 @@ public class PharmacistController {
 
 
     @GetMapping("/dashboard")
-    public String showDashboard(@RequestParam(required = false) String username,
-                                HttpServletRequest request,
+    public String showDashboard(HttpServletRequest request,
                                 Model model) {
-        if (username == null || username.isBlank()) {
-            Object fromSession = request.getSession().getAttribute("pharmacistUsername");
-            if (fromSession instanceof String) {
-                username = (String) fromSession;
-            }
+        Object fromSession = request.getSession().getAttribute("pharmacistUsername");
+        if (!(fromSession instanceof String) || ((String) fromSession).isBlank()) {
+            model.addAttribute("error", "Please log in first.");
+            return "redirect:/pharmacist/login";
         }
 
+        String username = (String) fromSession;
         Pharmacist pharmacist = pharmacistService.getPharmacistByUsername(username);
         if (pharmacist == null) {
             model.addAttribute("error", "Pharmacist not found.");
-            return "pharmacist/pharmacist-login";
+            return "redirect:/pharmacist/login";
         }
 
         List<Prescription> orders = prescriptionService.getActivePrescriptionsForPharmacist();
@@ -70,7 +69,11 @@ public class PharmacistController {
     }
 
     @GetMapping("/patients")
-    public String listPatientsWithOrders(Model model) {
+    public String listPatientsWithOrders(HttpServletRequest request, Model model) {
+        Object fromSession = request.getSession().getAttribute("pharmacistUsername");
+        if (!(fromSession instanceof String) || ((String) fromSession).isBlank()) {
+            return "redirect:/pharmacist/login";
+        }
         List<Prescription> completed = prescriptionService.getPrescriptionsByStatus("Completed");
         java.util.Map<Long, java.util.List<Prescription>> byPatient = new java.util.HashMap<>();
         for (Prescription p : completed) {
