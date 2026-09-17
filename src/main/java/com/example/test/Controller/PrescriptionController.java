@@ -365,9 +365,27 @@ public class PrescriptionController {
         return "redirect:/prescription/pharmacist/orders";
     }
 
+    private String sanitizeCsvField(String value) {
+        if (value == null) {
+            return "";
+        }
+        String sanitized = value;
+        // Mitigate CSV / Formula Injection (CWE-1236)
+        if (sanitized.startsWith("=") || sanitized.startsWith("+") || sanitized.startsWith("-") || sanitized.startsWith("@") || sanitized.startsWith("\t") || sanitized.startsWith("\r")) {
+            sanitized = "'" + sanitized;
+        }
+        return sanitized.replace("\"", "\"\"");
+    }
+
     // CSV report for today's orders
-    @GetMapping("/../reports/today.csv")
-    public ResponseEntity<String> downloadTodayCsv() {
+    @GetMapping({"/reports/today.csv", "/../reports/today.csv"})
+    public ResponseEntity<String> downloadTodayCsv(HttpServletRequest request) {
+        Object doctor = request.getSession().getAttribute("doctor");
+        Object pharmacist = request.getSession().getAttribute("pharmacistUsername");
+        if (doctor == null && pharmacist == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+
         LocalDateTime start = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime end = start.plusDays(1);
         List<Prescription> todays = prescriptionService.getPrescriptionsByDateRange(start, end);
@@ -378,8 +396,8 @@ public class PrescriptionController {
             sb.append(p.getPrescriptionId()).append(',')
               .append(p.getPatientId()).append(',')
               .append(p.getDoctorId()).append(',')
-              .append(p.getStatus()).append(',')
-              .append('"').append(p.getDiagnosis() != null ? p.getDiagnosis().replace("\"","'") : "").append('"').append(',')
+              .append('"').append(sanitizeCsvField(p.getStatus())).append('"').append(',')
+              .append('"').append(sanitizeCsvField(p.getDiagnosis())).append('"').append(',')
               .append(p.getPrescriptionDate() != null ? p.getPrescriptionDate().format(fmt) : "").append('\n');
         }
         HttpHeaders headers = new HttpHeaders();

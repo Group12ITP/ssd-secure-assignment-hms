@@ -34,8 +34,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | **Fixed** |
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | **Fixed** |
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
-| **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned (Next) |
-| **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned |
+| **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | **Fixed** |
+| **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned (Next) |
 | **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned |
 | **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned |
 | **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned |
@@ -359,6 +359,31 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Confirmed exception messages display sanitized generic text while recording detailed diagnostics to server logs.
 - **Preventive Best Practice:**
   Strip all diagnostic, test, and debug endpoints prior to production deployment or isolate them strictly using Spring profiles (`@Profile("dev")`). Ensure global exception handlers never leak raw stack traces or internal database diagnostics to clients.
+
+---
+
+### V13: CSV / Formula Injection in Daily Reports Export
+- **OWASP Category:** A03:2021 – Injection (CWE-1236)
+- **Severity:** Medium
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/PrescriptionController.java`
+- **Description:**
+  The prescription daily report export endpoint (`/reports/today.csv`) constructed CSV files by concatenating unvalidated model fields (`status`, `diagnosis`) directly into comma-separated lines. If user-controlled fields contained formula trigger characters (`=`, `+`, `-`, `@`, `\t`, `\r`), spreadsheet viewers (such as Microsoft Excel and LibreOffice Calc) would execute the values as active formulas upon opening the exported CSV file. Additionally, the export lacked session authentication checks.
+- **How It Was Identified:**
+  Source code auditing of CSV report generator in `PrescriptionController.java`.
+- **Exploitation Scenario:**
+  A malicious clinician or patient inputs a diagnosis such as `=cmd|'/C powershell IEX ...'!A0` or `=SUM(...)`. When hospital administration or pharmacy staff exports and opens `report-today.csv` in Excel, the operating system executes the spreadsheet macro/formula, leading to remote code execution or data exfiltration.
+- **Fix Applied:**
+  1. Implemented `sanitizeCsvField()` to prepend a single quote (`'`) to any field starting with formula execution characters (`=`, `+`, `-`, `@`, `\t`, `\r`), forcing spreadsheet software to treat the value strictly as literal text.
+  2. Applied RFC 4180 quotation and double-quote escaping for all text fields.
+  3. Added session-based authorization checks to ensure only authenticated healthcare staff can download hospital reports.
+- **Branch:** `fix/V13-prevent-csv-injection`
+- **Commit:** `7a61f77`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Tested CSV generation with formula strings (e.g. `=1+1`, `@SUM`) and confirmed they are safely prefixed with `'` in the generated CSV output.
+- **Preventive Best Practice:**
+  Always sanitize CSV export fields containing free-form user input by neutralizing formula prefix characters (`=`, `+`, `-`, `@`, tab, return) with a prepended single quotation mark (`'`), and wrap string columns in quotes with escaped inner double quotes according to RFC 4180.
 
 ---
 
