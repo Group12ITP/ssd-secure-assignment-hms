@@ -37,8 +37,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | **Fixed** |
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | **Fixed** |
 | **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | **Fixed** |
-| **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned (Next) |
-| **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned |
+| **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | **Fixed** |
+| **V17** | Weak Password Policy & Missing Complexity Validation | A07:2021 – Identification & Authentication Failures | Low | Planned (Next) |
 
 ---
 
@@ -437,6 +437,32 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Confirmed headers `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `Content-Security-Policy` are appended to HTTP responses.
 - **Preventive Best Practice:**
   Always enable and fine-tune browser security headers as part of default defense-in-depth architecture. Enforce a robust Content Security Policy, disallow unnecessary iframe embedding, and mandate strict MIME-type adherence.
+
+---
+
+### V16: Protected Health Information (PHI) Leaked to Standard Output
+- **OWASP Category:** A09:2021 – Security Logging and Monitoring Failures (CWE-532)
+- **Severity:** Low
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/PrescriptionController.java`
+  - `src/main/java/com/example/test/Service/PrescriptionService.java`
+  - `src/main/java/com/example/test/Service/PrescriptionMedicineService.java`
+- **Description:**
+  Diagnostic debug logging code in `PrescriptionController.java`, `PrescriptionService.java`, and `PrescriptionMedicineService.java` repeatedly emitted patient Protected Health Information (PHI) directly to standard output (`System.out.println`). The printed data included clinical diagnoses, patient symptoms, doctor clinical notes, patient IDs, prescribed pharmaceuticals, dosage regimens, and pricing data. This violated healthcare privacy mandates (e.g. HIPAA Security Rule, GDPR Article 9).
+- **How It Was Identified:**
+  Source code auditing for console I/O routines (`System.out.println`) and sensitive data handling review.
+- **Exploitation Scenario:**
+  Log aggregation pipelines, container console stdout logs (e.g. Docker, Kubernetes, AWS CloudWatch), and server console sessions store or display the plain-text clinical diagnoses and notes of patients. Anyone with read access to server logs or terminal streams can access private medical records without leaving an audit trail in the EHR system.
+- **Fix Applied:**
+  1. Removed all `System.out.println` and `System.err.println` statements logging sensitive medical data across prescription controllers and services.
+  2. Replaced them with structured SLF4J logging at appropriate levels (`logger.info`, `logger.debug`, `logger.error`), recording non-sensitive transaction markers (prescription ID, appointment ID) while omitting clinical notes, symptoms, and diagnoses.
+- **Branch:** `fix/V16-remove-phi-console-logging`
+- **Commit:** `b5dc844`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed that prescription creation and status updates execute cleanly without logging clinical notes or diagnoses to stdout.
+- **Preventive Best Practice:**
+  Prohibit `System.out.println` in production applications via linter rules (e.g., Checkstyle, SonarQube). Use structured logging frameworks with strict log filtering policies that redact or exclude personally identifiable information (PII) and Protected Health Information (PHI).
 
 ---
 
