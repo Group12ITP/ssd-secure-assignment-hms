@@ -504,13 +504,82 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 ---
 
 ## OAuth2 / OpenID Connect Implementation
-*(To be implemented on branch `feature/oauth-openid` following completion of vulnerability fixes)*
-- **Provider Used:** Google Identity Services (OpenID Connect)
-- **Grant Type:** Authorization Code Grant with PKCE
-- **Files Changed:** TBD
+
+### Overview & Security Rationale
+To modernise patient authentication and enhance access security, an industry-standard **OAuth 2.0 / OpenID Connect (OIDC)** authentication flow was integrated for the Hospital Management System patient portal using **Google Identity Services**.
+
+Delegating identity federation to an external OIDC Identity Provider (IdP) delivers critical security benefits:
+1. **Zero Credential Exposure:** Patient passwords are never transmitted to, processed by, or stored in the HMS database, eliminating the risk of database credential leaks, password reuse vulnerabilities, and offline cracking attacks.
+2. **Multi-Factor Authentication (MFA):** Inherits Google's robust security controls, including automated anomaly detection, passkeys, device prompts, and hardware security key MFA.
+3. **Cryptographic Identity Verification:** Google's OpenID Connect identity tokens (`id_token`) are digitally signed using RS256/ES256 and verified against Google's public JSON Web Key Sets (JWKS), ensuring authentication authenticity and integrity.
+4. **Session Fixation Defense:** The custom authentication success handler immediately invokes `request.changeSessionId()` upon receiving a valid OAuth authorization response before granting session attributes.
+
+---
+
+### Technical Specifications
+- **Identity Provider (IdP):** Google Identity Services
+- **Protocol:** OpenID Connect Core 1.0 (built atop OAuth 2.0)
+- **Grant Type:** Authorization Code Grant with Proof Key for Code Exchange (PKCE - RFC 7636)
+- **Scopes Requested:** `openid`, `profile`, `email`
+- **Redirect URI:** `{baseUrl}/login/oauth2/code/google`
 - **Branch:** `feature/oauth-openid`
-- **Integration Summary:** TBD
-- **Testing & Verification:** TBD
+- **Code Commit:** `9398b42` (`Feat: Add Google OAuth2/OpenID Connect login`)
+
+---
+
+### Implementation Details & Files Modified
+
+1. **`pom.xml`**:
+   - Added `spring-boot-starter-oauth2-client` to bring in Spring Security 6 OAuth2 client core, JOSE JWT validation (`nimbus-jose-jwt`), and OpenID Connect protocol handlers.
+
+2. **`src/main/resources/application.properties` & `application.properties.example`**:
+   - Configured Google OAuth2 registration properties:
+     ```properties
+     spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID:mock-google-client-id}
+     spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET:mock-google-client-secret}
+     spring.security.oauth2.client.registration.google.scope=openid,profile,email
+     spring.security.oauth2.client.registration.google.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+     ```
+   - Client secrets and IDs are strictly externalized via environment variables to avoid hardcoded secrets in source control.
+
+3. **`src/main/java/com/example/test/Security/OAuth2LoginSuccessHandler.java`**:
+   - Created custom `AuthenticationSuccessHandler` implementing the following workflow:
+     - Extracts authenticated claims (`email`, `name`) from the `OAuth2User` principal.
+     - Performs just-in-time (JIT) patient provisioning: if no account exists in `PatientRepository` for the verified email, an entity is safely auto-provisioned with random unguessable password hash, unique identifier, and compliant profile defaults.
+     - Defends against session fixation via `request.changeSessionId()`.
+     - Establishes `ROLE_PATIENT` authority in the `SecurityContextHolder`.
+     - Binds the patient model into the HTTP session (`"patient"`) to satisfy role-based dashboard authorization and profile views.
+     - Redirects the user directly to `/patient/dashboard`.
+
+4. **`src/main/java/com/example/test/Security/WebSecurityConfig.java`**:
+   - Permitted public access to authorization endpoints: `/oauth2/**` and `/login/oauth2/**`.
+   - Wired `.oauth2Login()` into the Spring Security filter chain with custom login page `/patient/login` and delegated success handler to `OAuth2LoginSuccessHandler`.
+
+5. **`src/main/resources/templates/patient/patient-login.html`**:
+   - Updated the Google social login button to link directly to `/oauth2/authorization/google` with accessible styling (`display: inline-flex`, ARIA labels, hover effects).
+
+---
+
+### Verification and Testing Guide
+1. **Compilation:** Verified that the project compiles with zero errors:
+   ```powershell
+   $env:JAVA_HOME = "C:\Program Files\Java\jdk-17"
+   .\mvnw.cmd compile -DskipTests
+   ```
+2. **Local Testing with Live Google Credentials:**
+   - Create OAuth 2.0 Client Credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+   - Set Authorized Redirect URI to `http://localhost:8081/login/oauth2/code/google`.
+   - Launch application with environment variables:
+     ```powershell
+     $env:GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com"
+     $env:GOOGLE_CLIENT_SECRET = "your-google-client-secret"
+     .\mvnw.cmd spring-boot:run
+     ```
+   - Navigate to `http://localhost:8081/patient/login` and click the red Google button.
+   - User is redirected to `accounts.google.com` with `response_type=code` and PKCE challenge.
+   - Upon granting consent, Google redirects to `/login/oauth2/code/google`, `OAuth2LoginSuccessHandler` verifies credentials, establishes `ROLE_PATIENT` session, and opens `/patient/dashboard`.
+
+---
 
 ---
 

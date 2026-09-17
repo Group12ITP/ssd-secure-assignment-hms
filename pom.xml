@@ -62,6 +62,12 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- OAuth2 / OpenID Connect Client -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+
         <!-- Validation (for form input validation) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

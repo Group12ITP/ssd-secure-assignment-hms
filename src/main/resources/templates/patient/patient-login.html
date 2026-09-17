@@ -215,7 +215,8 @@
             font-size: 14px;
         }
 
-        .social-icons button {
+        .social-icons button,
+        .social-icons .social-btn {
             border: none;
             border-radius: 50%;
             margin: 0 6px;
@@ -226,14 +227,20 @@
             font-weight: bold;
             transition: transform 0.3s;
             font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
         }
 
         .google { background: #DB4437; }
         .facebook { background: #3B5998; }
         .twitter { background: #1DA1F2; }
 
-        .social-icons button:hover {
+        .social-icons button:hover,
+        .social-icons .social-btn:hover {
             transform: scale(1.1);
+            color: #fff;
         }
 
         @media (max-width: 768px) {
@@ -306,9 +313,9 @@
             <div class="social-login">
                 <p>Or continue with</p>
                 <div class="social-icons">
-                    <button type="button" class="google"><i class="fab fa-google"></i></button>
-                    <button type="button" class="facebook"><i class="fab fa-facebook-f"></i></button>
-                    <button type="button" class="twitter"><i class="fab fa-twitter"></i></button>
+                    <a th:href="@{/oauth2/authorization/google}" class="social-btn google" title="Sign in with Google" aria-label="Sign in with Google"><i class="fab fa-google"></i></a>
+                    <button type="button" class="social-btn facebook" title="Facebook"><i class="fab fa-facebook-f"></i></button>
+                    <button type="button" class="social-btn twitter" title="Twitter"><i class="fab fa-twitter"></i></button>
                 </div>
             </div>
         </form>
