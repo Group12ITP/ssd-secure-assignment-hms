@@ -58,9 +58,11 @@ public class Medicine {
     @Column(name = "expiry_date")
     private String expiryDate;
 
+    @PositiveOrZero(message = "Unit price must be zero or positive")
     @Column(name = "unit_price")
     private Double unitPrice;
 
+    @Min(value = 0, message = "Stock quantity cannot be negative")
     @Column(name = "stock_quantity")
     private Integer stockQuantity;
 

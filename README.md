@@ -30,10 +30,10 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
-| **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | Planned |
+| **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | Planned (Next) |
 | **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | Planned |
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
-| **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | Planned (Next) |
+| **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned |
 | **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned |
@@ -200,6 +200,35 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Verified that unauthorized access attempts across patient, doctor, and status update endpoints are rejected and redirected appropriately.
 - **Preventive Best Practice:**
   Implement contextual authorization checks at the service and controller layers. Validate that the requesting user possesses the requisite role and a legitimate relationship (author, patient owner, or assigned pharmacist) to the specific database record being accessed.
+
+---
+
+### V12: Missing Authorization & Input Validation on Medicine Creation
+- **OWASP Category:** A01:2021 – Broken Access Control / A04:2021 – Insecure Design (CWE-285, CWE-20)
+- **Severity:** Medium
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/MedicineController.java`
+  - `src/main/java/com/example/test/Model/Medicine.java`
+  - `src/main/java/com/example/test/Security/WebSecurityConfig.java`
+- **Description:**
+  Medicine creation and inventory management routes (`/medicine/**`, `/medicine/add`, `/medicine/api/**`) lacked role-based access restrictions, allowing any unauthenticated or unauthorized party to create pharmaceutical entries. Furthermore, the `POST /medicine/add` endpoint accepted incoming data without executing Bean Validation (`@Valid` was missing on `@ModelAttribute Medicine medicine`), and numerical fields like `unitPrice` and `stockQuantity` lacked non-negativity constraints.
+- **How It Was Identified:**
+  Source code auditing of `MedicineController.java` and entity constraints in `Medicine.java`.
+- **Exploitation Scenario:**
+  An unauthorized actor or malicious patient sends `POST /medicine/add` with arbitrary or negative values for `unitPrice` and `stockQuantity`, or injects counterfeit medication items into the hospital catalog without pharmacist credentials.
+- **Fix Applied:**
+  1. Configured HTTP-level access control in `WebSecurityConfig.java` requiring `ROLE_PHARMACIST` for `/medicine/**`.
+  2. Implemented controller-level pharmacist session checks across `listMedicines`, `addMedicineForm`, `saveMedicine`, and API endpoints in `MedicineController.java`.
+  3. Added `@Valid` and `BindingResult` to `saveMedicine` to enforce bean validation before saving, returning form errors if validation fails.
+  4. Added `@PositiveOrZero` and `@Min(0)` constraints on `unitPrice` and `stockQuantity` in `Medicine.java`.
+- **Branch:** `fix/V12-restrict-medicine-creation`
+- **Commit:** `e39fded`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed that non-pharmacist requests to `/medicine/add` are redirected to `/pharmacist/login`.
+  - Confirmed that invalid input is rejected before reaching the database.
+- **Preventive Best Practice:**
+  Apply strict input validation on all mutable inputs using Jakarta Validation annotations, and pair endpoint security in `SecurityFilterChain` with application-layer authorization checks to prevent unauthorized state creation.
 
 ---
 
