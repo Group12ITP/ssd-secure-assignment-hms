@@ -25,8 +25,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V1** | CSRF Protection Disabled Globally | A01:2021 – Broken Access Control / A05:2021 – Security Misconfiguration | High | **Fixed** |
 | **V2** | Publicly Accessible Protected Routes (`anyRequest().permitAll()`) | A01:2021 – Broken Access Control | Critical | **Fixed** |
 | **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
-| **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned (Next) |
-| **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | Planned |
+| **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
+| **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | Planned (Next) |
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
@@ -126,6 +126,31 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Verified that requesting `/doctor/dashboard?username=sarah.johnson` without an authenticated session fails to grant access and redirects to `/doctor/login`.
 - **Preventive Best Practice:**
   Never use client-supplied query parameters or request headers as proof of identity. Authenticate credentials once via a trusted authentication provider and maintain identity strictly in cryptographically secure, server-side session contexts or signed tokens.
+
+---
+
+### V4: Authentication Bypass via URL Parameter in Pharmacist Portal
+- **OWASP Category:** A07:2021 – Identification & Authentication Failures / A01:2021 – Broken Access Control (CWE-287: Improper Authentication, CWE-306: Missing Authentication for Critical Function)
+- **Severity:** Critical
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/PharmacistController.java`
+- **Description:**
+  `PharmacistController.showDashboard` accepted `@RequestParam(required = false) String username`. If present, it bypassed session verification and fetched the pharmacist by the supplied username string, exposing confidential prescription queues, urgency counters, and scheduled fulfillment lists without authentication. In addition, `/pharmacist/patients` had no session validation check.
+- **How It Was Identified:**
+  Manual static code review and endpoint parameter mapping in `PharmacistController.java`.
+- **Exploitation Scenario:**
+  An unauthenticated remote user visits `/pharmacist/dashboard?username=alice`. The application loads pharmacist Alice's dashboard, displaying pending orders, urgent prescriptions, and inventory shortcuts without requesting a password.
+- **Fix Applied:**
+  1. Removed `@RequestParam String username` from `showDashboard` in `PharmacistController.java`.
+  2. Enforced that the pharmacist username must strictly originate from an active, verified `HttpSession` attribute (`pharmacistUsername`), redirecting unauthenticated requests to `/pharmacist/login`.
+  3. Added session validation to `/pharmacist/patients`.
+- **Branch:** `fix/V4-prevent-pharmacist-auth-bypass`
+- **Commit:** `8725b2d`
+- **Verification:**
+  - Compiled successfully with Maven wrapper (`BUILD SUCCESS`).
+  - Tested that navigating to `/pharmacist/dashboard?username=alice` without an active pharmacist session redirects to `/pharmacist/login`.
+- **Preventive Best Practice:**
+  Enforce strict session-bound authentication principles. Reject query parameters for identity management and mandate multi-layered access control where both framework security filters and controllers enforce authenticated principal state.
 
 ---
 
