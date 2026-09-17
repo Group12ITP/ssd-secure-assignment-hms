@@ -250,25 +250,55 @@
                 container.innerHTML = '';
 
                 if (medicines.length === 0) {
-                    container.innerHTML = '<p class="text-muted">No medicines found in this category.</p>';
+                    const p = document.createElement('p');
+                    p.className = 'text-muted';
+                    p.textContent = 'No medicines found in this category.';
+                    container.appendChild(p);
                 } else {
                     medicines.forEach(medicine => {
                         const medicineDiv = document.createElement('div');
                         medicineDiv.className = 'medicine-item';
-                        medicineDiv.innerHTML = `
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">${medicine.medicineName}</h6>
-                                    <small class="text-muted">${medicine.genericName} - ${medicine.strength}</small>
-                                    <br><small class="text-info">${medicine.dosageForm}</small>
-                                    <br><small class="text-success">Price: $${medicine.unitPrice || '0.00'}</small>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                        onclick="addMedicine(${medicine.medicineId}, '${medicine.medicineName.replace(/'/g, "\\'")}', '${medicine.strength.replace(/'/g, "\\'")}', '${medicine.genericName.replace(/'/g, "\\'")}', '${medicine.dosageForm.replace(/'/g, "\\'")}', ${medicine.unitPrice || 0})">
-                                    <i class="fas fa-plus"></i> Add
-                                </button>
-                            </div>
-                        `;
+
+                        const flexDiv = document.createElement('div');
+                        flexDiv.className = 'd-flex justify-content-between align-items-center';
+
+                        const infoDiv = document.createElement('div');
+                        const h6 = document.createElement('h6');
+                        h6.className = 'mb-1';
+                        h6.textContent = medicine.medicineName || '';
+
+                        const smallGeneric = document.createElement('small');
+                        smallGeneric.className = 'text-muted';
+                        smallGeneric.textContent = (medicine.genericName || '') + ' - ' + (medicine.strength || '');
+
+                        const br1 = document.createElement('br');
+                        const smallDosage = document.createElement('small');
+                        smallDosage.className = 'text-info';
+                        smallDosage.textContent = medicine.dosageForm || '';
+
+                        const br2 = document.createElement('br');
+                        const smallPrice = document.createElement('small');
+                        smallPrice.className = 'text-success';
+                        smallPrice.textContent = 'Price: $' + (medicine.unitPrice || '0.00');
+
+                        infoDiv.appendChild(h6);
+                        infoDiv.appendChild(smallGeneric);
+                        infoDiv.appendChild(br1);
+                        infoDiv.appendChild(smallDosage);
+                        infoDiv.appendChild(br2);
+                        infoDiv.appendChild(smallPrice);
+
+                        const addBtn = document.createElement('button');
+                        addBtn.type = 'button';
+                        addBtn.className = 'btn btn-sm btn-outline-primary';
+                        addBtn.innerHTML = '<i class="fas fa-plus"></i> Add';
+                        addBtn.addEventListener('click', () => {
+                            addMedicine(medicine.medicineId, medicine.medicineName, medicine.strength, medicine.genericName, medicine.dosageForm, medicine.unitPrice || 0);
+                        });
+
+                        flexDiv.appendChild(infoDiv);
+                        flexDiv.appendChild(addBtn);
+                        medicineDiv.appendChild(flexDiv);
                         container.appendChild(medicineDiv);
                     });
                 }
@@ -323,48 +353,96 @@
         formFieldsContainer.innerHTML = '';
 
         selectedMedicines.forEach((medicine, index) => {
-            // Create display for selected medicine
+            // Create display for selected medicine safely
             const medicineDiv = document.createElement('div');
             medicineDiv.className = 'mb-3 p-3 border rounded';
-            medicineDiv.innerHTML = `
-                <div class="row">
-                    <div class="col-md-3">
-                        <strong>${medicine.name}</strong><br>
-                        <small class="text-muted">${medicine.strength}</small>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="small">Dosage</label>
-                        <input type="text" class="form-control form-control-sm"
-                               value="${medicine.dosage}"
-                               onchange="updateMedicineField(${medicine.id}, 'dosage', this.value)">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="small">Frequency</label>
-                        <input type="text" class="form-control form-control-sm"
-                               value="${medicine.frequency}"
-                               onchange="updateMedicineField(${medicine.id}, 'frequency', this.value)">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="small">Duration</label>
-                        <input type="text" class="form-control form-control-sm"
-                               value="${medicine.duration}"
-                               onchange="updateMedicineField(${medicine.id}, 'duration', this.value)">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="small">Instructions</label>
-                        <input type="text" class="form-control form-control-sm"
-                               value="${medicine.instructions}"
-                               onchange="updateMedicineField(${medicine.id}, 'instructions', this.value)">
-                    </div>
-                    <div class="col-md-1">
-                        <label class="small">&nbsp;</label>
-                        <button type="button" class="btn btn-sm btn-outline-danger d-block"
-                                onclick="removeMedicine(${medicine.id})">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
+
+            const row = document.createElement('div');
+            row.className = 'row';
+
+            const col1 = document.createElement('div');
+            col1.className = 'col-md-3';
+            const strong = document.createElement('strong');
+            strong.textContent = medicine.name || '';
+            const smallStrength = document.createElement('small');
+            smallStrength.className = 'text-muted';
+            smallStrength.textContent = medicine.strength || '';
+            col1.appendChild(strong);
+            col1.appendChild(document.createElement('br'));
+            col1.appendChild(smallStrength);
+
+            const col2 = document.createElement('div');
+            col2.className = 'col-md-2';
+            const labelDosage = document.createElement('label');
+            labelDosage.className = 'small';
+            labelDosage.textContent = 'Dosage';
+            const inputDosage = document.createElement('input');
+            inputDosage.type = 'text';
+            inputDosage.className = 'form-control form-control-sm';
+            inputDosage.value = medicine.dosage || '';
+            inputDosage.addEventListener('change', (e) => updateMedicineField(medicine.id, 'dosage', e.target.value));
+            col2.appendChild(labelDosage);
+            col2.appendChild(inputDosage);
+
+            const col3 = document.createElement('div');
+            col3.className = 'col-md-2';
+            const labelFreq = document.createElement('label');
+            labelFreq.className = 'small';
+            labelFreq.textContent = 'Frequency';
+            const inputFreq = document.createElement('input');
+            inputFreq.type = 'text';
+            inputFreq.className = 'form-control form-control-sm';
+            inputFreq.value = medicine.frequency || '';
+            inputFreq.addEventListener('change', (e) => updateMedicineField(medicine.id, 'frequency', e.target.value));
+            col3.appendChild(labelFreq);
+            col3.appendChild(inputFreq);
+
+            const col4 = document.createElement('div');
+            col4.className = 'col-md-2';
+            const labelDur = document.createElement('label');
+            labelDur.className = 'small';
+            labelDur.textContent = 'Duration';
+            const inputDur = document.createElement('input');
+            inputDur.type = 'text';
+            inputDur.className = 'form-control form-control-sm';
+            inputDur.value = medicine.duration || '';
+            inputDur.addEventListener('change', (e) => updateMedicineField(medicine.id, 'duration', e.target.value));
+            col4.appendChild(labelDur);
+            col4.appendChild(inputDur);
+
+            const col5 = document.createElement('div');
+            col5.className = 'col-md-2';
+            const labelInst = document.createElement('label');
+            labelInst.className = 'small';
+            labelInst.textContent = 'Instructions';
+            const inputInst = document.createElement('input');
+            inputInst.type = 'text';
+            inputInst.className = 'form-control form-control-sm';
+            inputInst.value = medicine.instructions || '';
+            inputInst.addEventListener('change', (e) => updateMedicineField(medicine.id, 'instructions', e.target.value));
+            col5.appendChild(labelInst);
+            col5.appendChild(inputInst);
+
+            const col6 = document.createElement('div');
+            col6.className = 'col-md-1';
+            const labelRm = document.createElement('label');
+            labelRm.className = 'small';
+            labelRm.innerHTML = '&nbsp;';
+            const btnRm = document.createElement('button');
+            btnRm.type = 'button';
+            btnRm.className = 'btn btn-sm btn-outline-danger d-block';
+            btnRm.innerHTML = '<i class="fas fa-times"></i>';
+            btnRm.addEventListener('click', () => removeMedicine(medicine.id));
+            col6.appendChild(labelRm);
+            col6.appendChild(btnRm);
+
+            row.appendChild(col1);
+            row.appendChild(col2);
+            row.appendChild(col3);
+            row.appendChild(col4);
+            row.appendChild(col5);
+            row.appendChild(col6);
+            medicineDiv.appendChild(row);
             container.appendChild(medicineDiv);
 
             // Create hidden form fields

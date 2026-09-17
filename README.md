@@ -29,10 +29,10 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | **Fixed** |
-| **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned (Next) |
+| **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | **Fixed** |
 | **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | **Fixed** |
 | **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | **Fixed** |
-| **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
+| **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned (Next) |
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned |
@@ -304,6 +304,32 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Tested HTML markup strings (e.g. `<img src=x onerror=alert(1)>`) and verified they render safely as literal text without DOM script execution.
 - **Preventive Best Practice:**
   Avoid using `.innerHTML`, `outerHTML`, or `document.write` with untrusted data. Use browser-native safe manipulation methods such as `.textContent`, `document.createElement`, and `.setAttribute`, or employ a trusted sanitization library like DOMPurify.
+
+---
+
+### V8: Stored DOM XSS in Prescription Medicine List Rendering
+- **OWASP Category:** A03:2021 – Injection (CWE-79)
+- **Severity:** High
+- **Affected Files:**
+  - `src/main/resources/templates/doctor/create-prescription.html`
+  - `src/main/resources/templates/pharmacist/pharmacist-dashboard.html`
+  - `src/main/resources/templates/pharmacist/scheduled-orders.html`
+- **Description:**
+  Client-side scripts across the doctor prescription creation portal and pharmacist dashboard rendered asynchronous medication payloads (`/prescription/medicines/{category}` and `/prescription/api/medicines/{orderId}`) by directly interpolating medication properties (`medicineName`, `genericName`, `strength`, `dosage`, `frequency`, `instructions`) into template literals assigned to `.innerHTML`. Furthermore, dynamic inline `onclick` handlers in `create-prescription.html` performed raw string concatenation of medication parameters. Any malicious payload persisted in medication or prescription records would execute in clinicians' and pharmacists' browsers upon viewing.
+- **How It Was Identified:**
+  Source code review of dynamic JavaScript rendering blocks across Thymeleaf portal templates.
+- **Exploitation Scenario:**
+  An adversary creates or updates a medicine record with a name such as `Amoxicillin<script>fetch('/stealer?c='+document.cookie)</script>` or injects XSS via prescription dosage/instructions. Whenever a doctor selects that medicine category or a pharmacist views scheduled orders, the browser renders the unescaped HTML string, executing the payload in the context of the authenticated healthcare worker.
+- **Fix Applied:**
+  1. Replaced all `.innerHTML` string interpolations across `create-prescription.html`, `pharmacist-dashboard.html`, and `scheduled-orders.html` with explicit DOM element creation (`document.createElement`) and safe text assignment (`textContent`).
+  2. Replaced unsafe inline `onclick="..."` string concatenations in `create-prescription.html` with programmatic `addEventListener('click', ...)` closures passing typed parameters.
+- **Branch:** `fix/V8-prevent-medicine-dom-xss`
+- **Commit:** `1e4687f`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed that medicines containing HTML or script tags render as escaped literal strings and do not trigger browser script execution.
+- **Preventive Best Practice:**
+  Adopt strict DOM-safe rendering guidelines. Avoid template literal string concatenation into `innerHTML`. Use `textContent` for untrusted textual data, and attach event listeners programmatically rather than building inline handler attributes.
 
 ---
 
