@@ -22,9 +22,9 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 
 | ID | Title | OWASP Category | Severity | Status |
 |---|---|---|---|---|
-| **V1** | CSRF Protection Disabled Globally | A01:2021 – Broken Access Control / A05:2021 – Security Misconfiguration | High | Planned (Next) |
+| **V1** | CSRF Protection Disabled Globally | A01:2021 – Broken Access Control / A05:2021 – Security Misconfiguration | High | **Fixed** |
 | **V2** | Publicly Accessible Protected Routes (`anyRequest().permitAll()`) | A01:2021 – Broken Access Control | Critical | **Fixed** |
-| **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned |
+| **V3** | Authentication Bypass via URL Parameter in Doctor Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned (Next) |
 | **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | Planned |
 | **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | Planned |
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | Planned |
@@ -43,6 +43,33 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 ---
 
 ## Detailed Findings
+
+### V1: CSRF Protection Disabled Globally
+- **OWASP Category:** A01:2021 – Broken Access Control / A05:2021 – Security Misconfiguration (CWE-352: Cross-Site Request Forgery)
+- **Severity:** High
+- **Affected Files:**
+  - `src/main/java/com/example/test/Security/WebSecurityConfig.java`
+  - `src/main/resources/templates/pharmacist/pharmacist-dashboard.html`
+- **Description:**
+  CSRF protection was explicitly disabled globally in `WebSecurityConfig` with `.csrf().disable()`. Consequently, state-changing HTTP `POST` endpoints (prescription creation, appointment updates, medicine additions, status modifications) lacked anti-forgery validation.
+- **How It Was Identified:**
+  Manual static code review and inspection of Spring Security filter configurations.
+- **Exploitation Scenario:**
+  An authenticated doctor or pharmacist visits a malicious website hosting an invisible, auto-submitting HTML form targeting `http://localhost:8081/prescription/create` or `/prescription/update-status/1?status=Processing`. Because cookies are automatically included in cross-origin browser requests, the unauthorized action executes with the victim's privileges.
+- **Fix Applied:**
+  1. Replaced `.csrf().disable()` with `CookieCsrfTokenRepository.withHttpOnlyFalse()` in `WebSecurityConfig.java`.
+  2. Verified Thymeleaf forms automatically generate hidden `_csrf` input fields for all `th:action` endpoints.
+  3. Added `_csrf` meta tags and updated client-side JavaScript in `pharmacist-dashboard.html` to pass the `X-XSRF-TOKEN` header on asynchronous POST requests.
+- **Branch:** `fix/V1-csrf-protection`
+- **Commit:** `ffd3054`
+- **Verification:**
+  - Built successfully via Maven (`BUILD SUCCESS`).
+  - Tested that submitting POST requests without a valid CSRF token results in HTTP 403 Forbidden.
+  - Verified that legitimate Thymeleaf form submissions and token-authenticated AJAX calls succeed.
+- **Preventive Best Practice:**
+  Never disable CSRF protection for browser-facing web applications. Utilize standard token repositories (synchronizer token pattern or double-submit cookies) and enforce SameSite cookie attributes.
+
+---
 
 ### V2: Publicly Accessible Protected Routes (`anyRequest().permitAll()`)
 - **OWASP Category:** A01:2021 – Broken Access Control (CWE-284: Improper Access Control)
