@@ -57,6 +57,7 @@ public class WebSecurityConfig {
                         // 4. Role-specific portals
                         .requestMatchers("/doctor/**").hasRole(SecurityRoles.DOCTOR)
                         .requestMatchers("/pharmacist/**").hasRole(SecurityRoles.PHARMACIST)
+                        .requestMatchers("/medicine/**").hasRole(SecurityRoles.PHARMACIST)
                         .requestMatchers("/patient/**").hasRole(SecurityRoles.PATIENT)
 
                         // 5. Fallback: all other requests require authentication
