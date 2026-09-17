@@ -1,0 +1,18 @@
+# Example Configuration Template for Production / Local Development
+# Copy this file to application-local.properties or set the corresponding environment variables.
+
+# Database Configuration
+# Set SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, and SPRING_DATASOURCE_PASSWORD in your environment.
+# Note: trustServerCertificate should remain false in production to enforce strict TLS server validation.
+SPRING_DATASOURCE_URL=jdbc:sqlserver://localhost:1433;databaseName=DDD;encrypt=true;trustServerCertificate=false
+SPRING_DATASOURCE_USERNAME=your_db_username
+SPRING_DATASOURCE_PASSWORD=your_secure_db_password
+
+# JPA Configuration
+# Avoid 'update' or 'create-drop' in production; use 'validate' or managed database migrations (Flyway / Liquibase).
+SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+SPRING_JPA_SHOW_SQL=false
+
+# Mail Configuration
+SPRING_MAIL_USERNAME=your_smtp_username
+SPRING_MAIL_PASSWORD=your_smtp_password

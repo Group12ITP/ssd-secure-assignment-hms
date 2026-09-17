@@ -30,8 +30,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
-| **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | Planned (Next) |
-| **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | Planned |
+| **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | **Fixed** |
+| **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | Planned (Next) |
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
@@ -229,6 +229,33 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Confirmed that invalid input is rejected before reaching the database.
 - **Preventive Best Practice:**
   Apply strict input validation on all mutable inputs using Jakarta Validation annotations, and pair endpoint security in `SecurityFilterChain` with application-layer authorization checks to prevent unauthorized state creation.
+
+---
+
+### V9: Hardcoded Credentials & Insecure Database Configuration
+- **OWASP Category:** A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures (CWE-798, CWE-295)
+- **Severity:** High
+- **Affected Files:**
+  - `src/main/resources/application.properties`
+  - `src/main/resources/application.properties.example`
+- **Description:**
+  Database connection credentials (`spring.datasource.username=app_user` and `spring.datasource.password=123`) were hardcoded in plain text directly in the repository's configuration file. Furthermore, the JDBC connection URL specified `trustServerCertificate=true`, disabling TLS certificate verification and exposing database traffic (including patient PHI, prescription histories, and password hashes) to Machine-in-the-Middle (MitM) inspection. Lastly, `spring.jpa.show-sql=true` enabled verbose query and data logging in application output.
+- **How It Was Identified:**
+  Configuration review of `src/main/resources/application.properties` and static analysis credential scanning.
+- **Exploitation Scenario:**
+  Anyone with access to the source code repository or build artifacts obtains the cleartext database password `123`. Furthermore, on the local hospital or cloud network, an adversary intercepting database traffic can impersonate the SQL Server database because certificate validation is explicitly disabled (`trustServerCertificate=true`).
+- **Fix Applied:**
+  1. Externalized `spring.datasource.url`, `spring.datasource.username`, and `spring.datasource.password` into environment variables (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`) with no hardcoded secrets in the codebase.
+  2. Changed default TLS behavior to `trustServerCertificate=false` to mandate certificate trust validation.
+  3. Changed `spring.jpa.hibernate.ddl-auto` default to `validate` and `spring.jpa.show-sql` to `false` via configurable property placeholders.
+  4. Provided `application.properties.example` as a safe configuration template for production deployments.
+- **Branch:** `fix/V9-externalize-credentials-secure-tls`
+- **Commit:** `8b53b67`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed application loads credentials securely from environment variables without exposing cleartext credentials in source control.
+- **Preventive Best Practice:**
+  Never commit database credentials or API secrets to version control. Utilize environment variables, secrets managers (e.g., HashiCorp Vault, AWS Secrets Manager, Azure Key Vault), and enforce strict TLS server certificate verification on all database and microservice connections.
 
 ---
 
