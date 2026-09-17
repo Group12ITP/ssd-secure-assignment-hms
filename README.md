@@ -28,10 +28,10 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
 | **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | **Fixed** |
-| **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned |
+| **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned (Next) |
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
 | **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | **Fixed** |
-| **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | Planned (Next) |
+| **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | **Fixed** |
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
 | **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
@@ -256,6 +256,31 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Confirmed application loads credentials securely from environment variables without exposing cleartext credentials in source control.
 - **Preventive Best Practice:**
   Never commit database credentials or API secrets to version control. Utilize environment variables, secrets managers (e.g., HashiCorp Vault, AWS Secrets Manager, Azure Key Vault), and enforce strict TLS server certificate verification on all database and microservice connections.
+
+---
+
+### V10: Session Fixation Vulnerability in Authentication Handlers
+- **OWASP Category:** A07:2021 – Identification & Authentication Failures (CWE-384)
+- **Severity:** Medium
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/AuthController.java`
+  - `src/main/java/com/example/test/Controller/DoctorController.java`
+  - `src/main/java/com/example/test/Controller/PatientController.java`
+- **Description:**
+  Authentication handlers across the doctor, pharmacist, and patient portals (`/doctor/login`, `/pharmacist/login`, and `/patient/login`) authenticated users and assigned session attributes without renewing or rotating the underlying HTTP session identifier. An attacker could pre-seed a target browser with a known session token (`JSESSIONID`) and wait for the victim to log in, enabling full account hijacking.
+- **How It Was Identified:**
+  Source code review of session establishment flows in all three login controllers.
+- **Exploitation Scenario:**
+  An adversary on a shared workstation or via subdomain cookie tossing plants a specific `JSESSIONID` in the victim's browser. When the victim (doctor or pharmacist) logs in, the server elevates privileges on the pre-existing session without changing the identifier. The attacker then uses the pre-seeded session token to access protected clinical records.
+- **Fix Applied:**
+  Invoked `request.changeSessionId()` immediately upon successful credential validation across `AuthController.java`, `DoctorController.java`, and `PatientController.java`. This forces the servlet container to issue a brand new `JSESSIONID` cookie and migrate session attributes while invalidating the pre-authentication session identifier.
+- **Branch:** `fix/V10-prevent-session-fixation`
+- **Commit:** `c4ececc`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed session ID rotation upon successful credential verification.
+- **Preventive Best Practice:**
+  Always invalidate the existing session or invoke session ID migration (`request.changeSessionId()`) immediately upon privilege elevation or successful user authentication to defend against session fixation attacks.
 
 ---
 
