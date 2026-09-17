@@ -28,8 +28,8 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V4** | Authentication Bypass via URL Parameter in Pharmacist Portal | A07:2021 – Identification & Authentication Failures | Critical | **Fixed** |
 | **V5** | Insecure Direct Object Reference (IDOR) on Patient Profile | A01:2021 – Broken Access Control | High | **Fixed** |
 | **V6** | Broken Object Level Authorization (BOLA/IDOR) on Prescriptions | A01:2021 – Broken Access Control | High | **Fixed** |
-| **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | Planned (Next) |
-| **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned |
+| **V7** | DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials | A03:2021 – Injection | High | **Fixed** |
+| **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | Planned (Next) |
 | **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | **Fixed** |
 | **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | **Fixed** |
 | **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned |
@@ -281,6 +281,29 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Confirmed session ID rotation upon successful credential verification.
 - **Preventive Best Practice:**
   Always invalidate the existing session or invoke session ID migration (`request.changeSessionId()`) immediately upon privilege elevation or successful user authentication to defend against session fixation attacks.
+
+---
+
+### V7: DOM-Based Cross-Site Scripting (DOM XSS) in Landing Page Testimonials
+- **OWASP Category:** A03:2021 – Injection (CWE-79)
+- **Severity:** High
+- **Affected Files:**
+  - `src/main/resources/templates/index.html`
+- **Description:**
+  The landing page client-side feedback submission handler took user-provided input values (`name` and `dept` from `#fbName` and `#fbDept`) and directly concatenated them into an HTML template string assigned to `slide.innerHTML`. Any JavaScript payload included in the name or department fields would be parsed as executable markup and executed immediately in the user's browser context.
+- **How It Was Identified:**
+  Front-end code review of DOM manipulation routines in `src/main/resources/templates/index.html:664-678`.
+- **Exploitation Scenario:**
+  An attacker inputs `<img src=x onerror=alert(document.cookie)>` or a script payload into the feedback name or department field. Upon submitting the form, the browser parses the HTML fragment and executes the injected script, which can steal session tokens or perform malicious actions on behalf of the user.
+- **Fix Applied:**
+  Eliminated dynamic string interpolation into `slide.innerHTML`. Constructed the DOM skeleton with static markup classes (`.name-holder`, `.dept-holder`, `.quote-holder`, `.avatar-img`) and populated all dynamic user inputs strictly via `textContent` and safely URL-encoded attributes (`encodeURIComponent(name)`).
+- **Branch:** `fix/V7-prevent-dom-xss-testimonials`
+- **Commit:** `79ded36`
+- **Verification:**
+  - Verified compilation and template integrity via Maven wrapper (`BUILD SUCCESS`).
+  - Tested HTML markup strings (e.g. `<img src=x onerror=alert(1)>`) and verified they render safely as literal text without DOM script execution.
+- **Preventive Best Practice:**
+  Avoid using `.innerHTML`, `outerHTML`, or `document.write` with untrusted data. Use browser-native safe manipulation methods such as `.textContent`, `document.createElement`, and `.setAttribute`, or employ a trusted sanitization library like DOMPurify.
 
 ---
 
