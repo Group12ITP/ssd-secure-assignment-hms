@@ -90,6 +90,9 @@ public class Patient {
     @Column(name = "security_answer")
     private String securityAnswer;
 
+    @Column(name = "google_sub", unique = true)
+    private String googleSub;
+
     // Constructors, getters, and setters...
     public Patient() {}
 
@@ -164,4 +167,7 @@ public class Patient {
 
     public String getSecurityAnswer() { return securityAnswer; }
     public void setSecurityAnswer(String securityAnswer) { this.securityAnswer = securityAnswer; }
+
+    public String getGoogleSub() { return googleSub; }
+    public void setGoogleSub(String googleSub) { this.googleSub = googleSub; }
 }

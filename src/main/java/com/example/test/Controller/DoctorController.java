@@ -67,7 +67,9 @@ public class DoctorController {
         try {
             Doctor doctor = doctorService.loginDoctor(username, password);
             // Regenerate session ID upon authentication to prevent session fixation attacks
-            request.changeSessionId();
+            if (request.getSession(false) != null) {
+                request.changeSessionId();
+            }
             HttpSession session = request.getSession();
             model.addAttribute("doctor", doctor);
             // persist in session for subsequent pages (appointments, calendar, profile)

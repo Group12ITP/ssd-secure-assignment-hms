@@ -53,15 +53,47 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 return;
             }
 
-            // Find existing patient or auto-provision account
-            Patient patient = patientRepository.findByEmail(email);
+            // 1. Verify that email_verified claim is true before trusting email identity
+            Object emailVerifiedObj = oAuth2User.getAttribute("email_verified");
+            boolean emailVerified = Boolean.TRUE.equals(emailVerifiedObj)
+                    || "true".equalsIgnoreCase(String.valueOf(emailVerifiedObj));
+            if (!emailVerified) {
+                logger.warn("OAuth2 authentication rejected: email [{}] is not marked as verified by provider.", email);
+                response.sendRedirect("/patient/login?error=unverified_email");
+                return;
+            }
+
+            // 2. Extract Google 'sub' claim as a stable, persistent identifier
+            String sub = oAuth2User.getAttribute("sub");
+            if (sub == null || sub.isBlank()) {
+                sub = oAuth2User.getName();
+            }
+
+            // 3. First look up by Google sub; fallback to email lookup (linking sub to existing patient)
+            Patient patient = null;
+            if (sub != null && !sub.isBlank()) {
+                patient = patientRepository.findByGoogleSub(sub);
+            }
+
             if (patient == null) {
-                logger.info("Auto-provisioning new patient account for verified OIDC email: {}", email);
+                patient = patientRepository.findByEmail(email);
+                if (patient != null && sub != null && !sub.isBlank()) {
+                    // Link existing patient account to Google sub identifier
+                    patient.setGoogleSub(sub);
+                    patient = patientRepository.save(patient);
+                    logger.info("Linked existing patient [{}] to Google sub [{}]", patient.getUsername(), sub);
+                }
+            }
+
+            // If no existing patient matches, JIT provision a new patient account
+            if (patient == null) {
+                logger.info("Auto-provisioning new patient account for verified OIDC email: {} (sub: {})", email, sub);
                 patient = new Patient();
+                patient.setGoogleSub(sub);
                 patient.setEmail(email);
                 patient.setFullName((name != null && !name.isBlank()) ? name : "Google User");
 
-                // Ensure unique username
+                // Ensure unique username without trusting any request parameters
                 String baseUsername = email;
                 if (patientRepository.findByUsername(baseUsername) != null) {
                     baseUsername = email.split("@")[0] + "_" + UUID.randomUUID().toString().substring(0, 5);
@@ -78,10 +110,12 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 patient = patientRepository.save(patient);
             }
 
-            // Defend against session fixation by regenerating session ID upon successful external authentication
-            request.changeSessionId();
+            // 4. Defend against session fixation by regenerating session ID (guarded against no-session state)
+            if (request.getSession(false) != null) {
+                request.changeSessionId();
+            }
 
-            // Establish Spring Security Context with ROLE_PATIENT authority
+            // 5. Establish Spring Security Context strictly with ROLE_PATIENT authority (no request params trusted)
             List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(SecurityRoles.ROLE_PATIENT));
             UsernamePasswordAuthenticationToken patientAuth = new UsernamePasswordAuthenticationToken(
                     patient.getUsername(),

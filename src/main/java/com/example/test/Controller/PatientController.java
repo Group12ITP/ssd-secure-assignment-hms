@@ -91,7 +91,9 @@ public class PatientController {
         try {
             Patient patient = patientService.loginPatient(username, password);
             // Regenerate session ID upon authentication to prevent session fixation attacks
-            request.changeSessionId();
+            if (request.getSession(false) != null) {
+                request.changeSessionId();
+            }
             HttpSession session = request.getSession();
             session.setAttribute("patient", patient);
 
