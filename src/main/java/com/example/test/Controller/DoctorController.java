@@ -93,24 +93,15 @@ public class DoctorController {
     }
 
     @GetMapping("/dashboard")
-    public String showDashboard(@RequestParam(required = false) String username,
-                                @RequestParam(required = false) String success,
+    public String showDashboard(@RequestParam(required = false) String success,
                                 HttpSession session, Model model) {
 
-        // Try to get doctor from session or username parameter
         Doctor doctor = (Doctor) session.getAttribute("doctor");
-
-        if (doctor == null && username != null) {
-            doctor = doctorService.getDoctorByUsername(username);
-        }
 
         if (doctor == null) {
             model.addAttribute("error", "Please log in first.");
-            return "doctor/doctor-login";
+            return "redirect:/doctor/login";
         }
-
-        // Store doctor in session for future requests
-        session.setAttribute("doctor", doctor);
 
         // Add success message if present
         if (success != null) {
@@ -132,12 +123,8 @@ public class DoctorController {
     }
 
     @GetMapping("/appointments")
-    public String listAppointments(@RequestParam(required = false) String username, HttpSession session, Model model) {
+    public String listAppointments(HttpSession session, Model model) {
         Doctor doctor = (Doctor) session.getAttribute("doctor");
-        if (doctor == null && username != null) {
-            doctor = doctorService.getDoctorByUsername(username);
-            if (doctor != null) session.setAttribute("doctor", doctor);
-        }
         if (doctor == null) return "redirect:/doctor/login";
         model.addAttribute("doctor", doctor);
         model.addAttribute("appointments", appointmentService.getAppointmentsByDoctor(doctor.getDoctorId()));
@@ -145,12 +132,8 @@ public class DoctorController {
     }
 
     @GetMapping("/calendar")
-    public String calendar(@RequestParam(required = false) String username, HttpSession session, Model model) {
+    public String calendar(HttpSession session, Model model) {
         Doctor doctor = (Doctor) session.getAttribute("doctor");
-        if (doctor == null && username != null) {
-            doctor = doctorService.getDoctorByUsername(username);
-            if (doctor != null) session.setAttribute("doctor", doctor);
-        }
         if (doctor == null) return "redirect:/doctor/login";
         model.addAttribute("doctor", doctor);
         model.addAttribute("appointments", appointmentService.getAppointmentsByDoctor(doctor.getDoctorId()));
@@ -158,12 +141,8 @@ public class DoctorController {
     }
 
     @GetMapping("/profile")
-    public String profile(@RequestParam(required = false) String username, HttpSession session, Model model) {
+    public String profile(HttpSession session, Model model) {
         Doctor doctor = (Doctor) session.getAttribute("doctor");
-        if (doctor == null && username != null) {
-            doctor = doctorService.getDoctorByUsername(username);
-            if (doctor != null) session.setAttribute("doctor", doctor);
-        }
         if (doctor == null) return "redirect:/doctor/login";
         model.addAttribute("doctor", doctor);
         return "doctor/profile";
