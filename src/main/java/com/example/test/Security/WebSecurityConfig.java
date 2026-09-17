@@ -10,8 +10,17 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Configuration
 public class WebSecurityConfig {
+
+    private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
+
+    @Autowired
+    public WebSecurityConfig(OAuth2LoginSuccessHandler oauth2LoginSuccessHandler) {
+        this.oauth2LoginSuccessHandler = oauth2LoginSuccessHandler;
+    }
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder() {
@@ -50,7 +59,9 @@ public class WebSecurityConfig {
                                 "/logins",
                                 "/registers",
                                 "/contact/**",
-                                "/error"
+                                "/error",
+                                "/oauth2/**",
+                                "/login/oauth2/**"
                         ).permitAll()
 
                         // 3. Public authentication endpoints (Login & Register & Logout)
@@ -78,6 +89,10 @@ public class WebSecurityConfig {
                         .accessDeniedHandler((req, res, e) -> res.sendRedirect("/logins?denied=true"))
                 )
                 .formLogin(form -> form.disable())
+                .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/patient/login")
+                        .successHandler(oauth2LoginSuccessHandler)
+                )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/logins?logout=true")
