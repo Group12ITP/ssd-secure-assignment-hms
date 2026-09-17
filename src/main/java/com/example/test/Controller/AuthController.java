@@ -64,7 +64,9 @@ public class AuthController {
         try {
             Pharmacist pharmacist = pharmacistService.loginPharmacist(username, password);
             // Regenerate session ID upon authentication to prevent session fixation attacks
-            request.changeSessionId();
+            if (request.getSession(false) != null) {
+                request.changeSessionId();
+            }
             model.addAttribute("pharmacist", pharmacist);
             // remember username for dashboard fetches
             request.getSession().setAttribute("pharmacistUsername", pharmacist.getUsername());
