@@ -20,6 +20,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -85,10 +86,13 @@ public class PatientController {
     @PostMapping("/login")
     public String loginPatient(@RequestParam String username,
                                @RequestParam String password,
-                               HttpSession session,
+                               HttpServletRequest request,
                                Model model) {
         try {
             Patient patient = patientService.loginPatient(username, password);
+            // Regenerate session ID upon authentication to prevent session fixation attacks
+            request.changeSessionId();
+            HttpSession session = request.getSession();
             session.setAttribute("patient", patient);
 
             // Establish Spring Security authentication context with PATIENT role

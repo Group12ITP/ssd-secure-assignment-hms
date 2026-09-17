@@ -8,6 +8,7 @@ import com.example.test.Service.DoctorService;
 import com.example.test.Service.DoctorAppointmentService;
 import com.example.test.Service.PrescriptionService;
 import com.example.test.Security.SecurityRoles;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -61,10 +62,13 @@ public class DoctorController {
     @PostMapping("/login")
     public String loginDoctor(@RequestParam String username,
                               @RequestParam String password,
-                              HttpSession session,
+                              HttpServletRequest request,
                               Model model) {
         try {
             Doctor doctor = doctorService.loginDoctor(username, password);
+            // Regenerate session ID upon authentication to prevent session fixation attacks
+            request.changeSessionId();
+            HttpSession session = request.getSession();
             model.addAttribute("doctor", doctor);
             // persist in session for subsequent pages (appointments, calendar, profile)
             session.setAttribute("doctor", doctor);
