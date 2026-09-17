@@ -16,6 +16,9 @@ public class PatientService {
 
     // Register patient
     public Patient registerPatient(Patient patient) {
+        // Enforce strong password complexity policy
+        com.example.test.Security.PasswordValidator.validatePassword(patient.getPassword());
+
         // Check if email already exists
         if (patientRepository.findByEmail(patient.getEmail()) != null) {
             throw new RuntimeException("Email already exists!");
