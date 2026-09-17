@@ -365,14 +365,6 @@ public class PrescriptionController {
         return "redirect:/prescription/pharmacist/orders";
     }
 
-    // Remove the debug endpoint if you added it, or keep only one
-    @GetMapping("/debug")
-    @ResponseBody
-    public String debugPrescription() {
-        List<Prescription> prescriptions = prescriptionService.getPrescriptionsByDoctor(1L);
-        return "Total prescriptions in database: " + prescriptions.size();
-    }
-
     // CSV report for today's orders
     @GetMapping("/../reports/today.csv")
     public ResponseEntity<String> downloadTodayCsv() {

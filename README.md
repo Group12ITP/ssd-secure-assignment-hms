@@ -32,9 +32,9 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
 | **V8** | Stored DOM XSS in Prescription Medicine List Rendering | A03:2021 – Injection | High | **Fixed** |
 | **V9** | Hardcoded Credentials & Insecure Database Configuration | A05:2021 – Security Misconfiguration / A02:2021 – Cryptographic Failures | High | **Fixed** |
 | **V10** | Session Fixation Vulnerability in Authentication Handlers | A07:2021 – Identification & Authentication Failures | Medium | **Fixed** |
-| **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | Planned (Next) |
+| **V11** | Information Disclosure & State Mutation via Debug Endpoints | A05:2021 – Security Misconfiguration | Medium | **Fixed** |
 | **V12** | Missing Authorization & Input Validation on Medicine Creation | A01:2021 – Broken Access Control / A04:2021 – Insecure Design | Medium | **Fixed** |
-| **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned |
+| **V13** | CSV / Formula Injection in Daily Reports Export | A03:2021 – Injection | Medium | Planned (Next) |
 | **V14** | CRLF / SMTP Header Injection in Contact Form | A03:2021 – Injection | Medium | Planned |
 | **V15** | Missing Security HTTP Response Headers (CSP, Frame Options) | A05:2021 – Security Misconfiguration | Medium | Planned |
 | **V16** | Protected Health Information (PHI) Leaked to Standard Output | A09:2021 – Security Logging and Monitoring Failures | Low | Planned |
@@ -330,6 +330,35 @@ This project is an enterprise Hospital Management System (HMS) developed with Sp
   - Confirmed that medicines containing HTML or script tags render as escaped literal strings and do not trigger browser script execution.
 - **Preventive Best Practice:**
   Adopt strict DOM-safe rendering guidelines. Avoid template literal string concatenation into `innerHTML`. Use `textContent` for untrusted textual data, and attach event listeners programmatically rather than building inline handler attributes.
+
+---
+
+### V11: Information Disclosure & State Mutation via Debug Endpoints
+- **OWASP Category:** A05:2021 – Security Misconfiguration (CWE-489, CWE-209)
+- **Severity:** Medium
+- **Affected Files:**
+  - `src/main/java/com/example/test/Controller/TestController.java`
+  - `src/main/java/com/example/test/Controller/PrescriptionController.java`
+  - `src/main/java/com/example/test/Exception/GlobalExceptionHandler.java`
+- **Description:**
+  1. `TestController.java` exposed publicly accessible routes (`/test-db`, `/test-prescription-save`, `/create-sample-appointments`, `/test-page`, `/test`) that allowed unauthenticated users to trigger arbitrary database state insertions and view database exception messages.
+  2. `PrescriptionController.java` retained an exposed debug route (`/debug`) displaying clinical prescription counts.
+  3. `GlobalExceptionHandler.java` handled unhandled server exceptions by reflecting raw `ex.getMessage()` strings to client HTTP responses, disclosing internal implementation details, table structures, and stack traces.
+- **How It Was Identified:**
+  Endpoint discovery, URL mapping analysis, and exception handler code auditing.
+- **Exploitation Scenario:**
+  An unauthenticated attacker repeatedly triggers `GET /test-prescription-save` or `/create-sample-appointments` to pollute medical appointment databases with junk records, or triggers database exceptions to gather SQL database version and schema details from the rendered error page.
+- **Fix Applied:**
+  1. Annotated `TestController` with `@Profile("dev")` to ensure it is completely deactivated in production environments, and sanitized its internal debug outputs and error logging.
+  2. Deleted the leftover `/debug` route from `PrescriptionController.java`.
+  3. Updated `GlobalExceptionHandler.java` to log full stack traces securely via SLF4J, return a sanitized generic error message to end users, and re-throw `AccessDeniedException` so Spring Security can handle authentication redirects seamlessly.
+- **Branch:** `fix/V11-remove-debug-endpoints-sanitize-errors`
+- **Commit:** `e7617b6`
+- **Verification:**
+  - Verified compilation via Maven wrapper (`BUILD SUCCESS`).
+  - Confirmed exception messages display sanitized generic text while recording detailed diagnostics to server logs.
+- **Preventive Best Practice:**
+  Strip all diagnostic, test, and debug endpoints prior to production deployment or isolate them strictly using Spring profiles (`@Profile("dev")`). Ensure global exception handlers never leak raw stack traces or internal database diagnostics to clients.
 
 ---
 
