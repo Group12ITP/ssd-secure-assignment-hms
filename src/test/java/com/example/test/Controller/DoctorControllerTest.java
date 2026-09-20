@@ -6,6 +6,7 @@ import com.example.test.Model.Prescription;
 import com.example.test.Service.DoctorService;
 import com.example.test.Service.DoctorAppointmentService;
 import com.example.test.Service.PrescriptionService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -36,6 +38,9 @@ class DoctorControllerTest {
 
     @Mock
     private PrescriptionService prescriptionService;
+
+    @Mock
+    private HttpServletRequest request;
 
     @Mock
     private HttpSession session;
@@ -58,33 +63,35 @@ class DoctorControllerTest {
         testDoctor.setEmail("dr.smith@example.com");
         testDoctor.setFullName("Dr. John Smith");
         testDoctor.setSpecialization("Cardiology");
-        testDoctor.setContactNumber("1234567890");
-        testDoctor.setLicenseNumber("LIC123456");
 
         testAppointment = new DoctorAppointment();
         testAppointment.setAppointmentId(1L);
         testAppointment.setDoctorId(1L);
-        testAppointment.setPatientId(1L);
         testAppointment.setPatientName("John Doe");
-        testAppointment.setPatientEmail("john.doe@example.com");
-        testAppointment.setContactNumber("1234567890");
-        testAppointment.setAppointmentDate(LocalDateTime.now());
-        testAppointment.setAppointmentTime("10:30");
+        testAppointment.setAppointmentDate(LocalDateTime.now().plusDays(1));
         testAppointment.setStatus("Scheduled");
-        testAppointment.setNotes("Regular checkup");
 
         testPrescription = new Prescription();
         testPrescription.setPrescriptionId(1L);
-        testPrescription.setPatientId(1L);
         testPrescription.setDoctorId(1L);
-        testPrescription.setAppointmentId(1L);
-        testPrescription.setPrescriptionDate(LocalDateTime.now());
+        testPrescription.setPatientId(1L);
         testPrescription.setStatus("Active");
-        testPrescription.setNotes("Take with food");
+
+        lenient().when(request.getSession()).thenReturn(session);
+        lenient().when(request.getSession(anyBoolean())).thenReturn(session);
     }
 
     @Test
-    void testShowRegistrationForm_Success() {
+    void testShowLoginForm() {
+        // When
+        String result = doctorController.showLoginForm();
+
+        // Then
+        assertEquals("doctor/doctor-login", result);
+    }
+
+    @Test
+    void testShowRegisterForm() {
         // When
         String result = doctorController.showRegistrationForm(model);
 
@@ -96,51 +103,30 @@ class DoctorControllerTest {
     @Test
     void testRegisterDoctor_Success() {
         // Given
-        Doctor newDoctor = new Doctor();
-        newDoctor.setUsername("dr_new");
-        newDoctor.setEmail("dr.new@example.com");
-        newDoctor.setPassword("password123");
-        newDoctor.setFullName("Dr. New Doctor");
-        newDoctor.setSpecialization("Neurology");
-        newDoctor.setContactNumber("9876543210");
-        newDoctor.setLicenseNumber("LIC789012");
-
-        when(doctorService.registerDoctor(any(Doctor.class))).thenReturn(newDoctor);
+        when(doctorService.registerDoctor(testDoctor)).thenReturn(testDoctor);
 
         // When
-        String result = doctorController.registerDoctor(newDoctor, model);
+        String result = doctorController.registerDoctor(testDoctor, model);
 
         // Then
         assertEquals("redirect:/doctor/login", result);
-        verify(doctorService).registerDoctor(newDoctor);
-        verify(model).addAttribute("success", "Registration successful! Please log in.");
+        verify(doctorService).registerDoctor(testDoctor);
+        verify(model).addAttribute("success", "Doctor registered successfully!");
     }
 
     @Test
     void testRegisterDoctor_WithException() {
         // Given
-        Doctor newDoctor = new Doctor();
-        newDoctor.setEmail("existing@example.com");
-        
-        when(doctorService.registerDoctor(any(Doctor.class)))
-                .thenThrow(new RuntimeException("Email already exists!"));
+        when(doctorService.registerDoctor(testDoctor))
+                .thenThrow(new RuntimeException("Username already exists"));
 
         // When
-        String result = doctorController.registerDoctor(newDoctor, model);
+        String result = doctorController.registerDoctor(testDoctor, model);
 
         // Then
         assertEquals("doctor/doctor-register", result);
-        verify(doctorService).registerDoctor(newDoctor);
-        verify(model).addAttribute("error", "Email already exists!");
-    }
-
-    @Test
-    void testShowLoginForm_Success() {
-        // When
-        String result = doctorController.showLoginForm();
-
-        // Then
-        assertEquals("doctor/doctor-login", result);
+        verify(doctorService).registerDoctor(testDoctor);
+        verify(model).addAttribute("error", "Username already exists");
     }
 
     @Test
@@ -161,7 +147,7 @@ class DoctorControllerTest {
         when(prescriptionService.getPrescriptionsByDoctor(testDoctor.getDoctorId())).thenReturn(prescriptions);
 
         // When
-        String result = doctorController.loginDoctor(username, password, session, model);
+        String result = doctorController.loginDoctor(username, password, request, model);
 
         // Then
         assertEquals("redirect:/doctor/dashboard", result);
@@ -187,7 +173,7 @@ class DoctorControllerTest {
                 .thenThrow(new RuntimeException("Invalid username or password."));
 
         // When
-        String result = doctorController.loginDoctor(username, password, session, model);
+        String result = doctorController.loginDoctor(username, password, request, model);
 
         // Then
         assertEquals("doctor/doctor-login", result);
@@ -212,12 +198,11 @@ class DoctorControllerTest {
         when(prescriptionService.getPrescriptionsByDoctor(testDoctor.getDoctorId())).thenReturn(prescriptions);
 
         // When
-        String result = doctorController.showDashboard(null, "Registration successful", session, model);
+        String result = doctorController.showDashboard("Registration successful", session, model);
 
         // Then
         assertEquals("doctor/doctor-dashboard", result);
         verify(session).getAttribute("doctor");
-        verify(session).setAttribute("doctor", testDoctor);
         verify(model).addAttribute("success", "Registration successful");
         verify(model).addAttribute("doctor", testDoctor);
         verify(model).addAttribute("appointments", appointments);
@@ -230,31 +215,17 @@ class DoctorControllerTest {
     }
 
     @Test
-    void testShowDashboard_WithUsernameParameter() {
+    void testShowDashboard_NoDoctorInSession_RedirectsToLogin() {
         // Given
-        String username = "dr_smith";
-        List<DoctorAppointment> appointments = Arrays.asList(testAppointment);
-        List<Prescription> prescriptions = Arrays.asList(testPrescription);
-
         when(session.getAttribute("doctor")).thenReturn(null);
-        when(doctorService.getDoctorByUsername(username)).thenReturn(testDoctor);
-        when(appointmentService.getAppointmentsByDoctor(testDoctor.getDoctorId())).thenReturn(appointments);
-        when(appointmentService.getTodayAppointments(testDoctor.getDoctorId())).thenReturn(appointments);
-        when(appointmentService.countAllAppointments(testDoctor.getDoctorId())).thenReturn(5L);
-        when(appointmentService.countTodayAppointments(testDoctor.getDoctorId())).thenReturn(2L);
-        when(appointmentService.countByStatus(testDoctor.getDoctorId(), "Scheduled")).thenReturn(3L);
-        when(appointmentService.countByStatus(testDoctor.getDoctorId(), "Completed")).thenReturn(2L);
-        when(prescriptionService.getPrescriptionsByDoctor(testDoctor.getDoctorId())).thenReturn(prescriptions);
 
         // When
-        String result = doctorController.showDashboard(username, null, session, model);
+        String result = doctorController.showDashboard(null, session, model);
 
         // Then
-        assertEquals("doctor/doctor-dashboard", result);
+        assertEquals("redirect:/doctor/login", result);
         verify(session).getAttribute("doctor");
-        verify(doctorService).getDoctorByUsername(username);
-        verify(session).setAttribute("doctor", testDoctor);
-        verify(model).addAttribute("doctor", testDoctor);
+        verify(model).addAttribute("error", "Please log in first.");
     }
 
     @Test
@@ -263,10 +234,10 @@ class DoctorControllerTest {
         when(session.getAttribute("doctor")).thenReturn(null);
 
         // When
-        String result = doctorController.showDashboard(null, null, session, model);
+        String result = doctorController.showDashboard(null, session, model);
 
         // Then
-        assertEquals("doctor/doctor-login", result);
+        assertEquals("redirect:/doctor/login", result);
         verify(session).getAttribute("doctor");
         verify(model).addAttribute("error", "Please log in first.");
         verify(doctorService, never()).getDoctorByUsername(anyString());
@@ -281,7 +252,7 @@ class DoctorControllerTest {
         when(appointmentService.getAppointmentsByDoctor(testDoctor.getDoctorId())).thenReturn(appointments);
 
         // When
-        String result = doctorController.listAppointments(null, session, model);
+        String result = doctorController.listAppointments(session, model);
 
         // Then
         assertEquals("doctor/appointments", result);
@@ -291,34 +262,12 @@ class DoctorControllerTest {
     }
 
     @Test
-    void testListAppointments_WithUsernameParameter() {
-        // Given
-        String username = "dr_smith";
-        List<DoctorAppointment> appointments = Arrays.asList(testAppointment);
-
-        when(session.getAttribute("doctor")).thenReturn(null);
-        when(doctorService.getDoctorByUsername(username)).thenReturn(testDoctor);
-        when(appointmentService.getAppointmentsByDoctor(testDoctor.getDoctorId())).thenReturn(appointments);
-
-        // When
-        String result = doctorController.listAppointments(username, session, model);
-
-        // Then
-        assertEquals("doctor/appointments", result);
-        verify(session).getAttribute("doctor");
-        verify(doctorService).getDoctorByUsername(username);
-        verify(session).setAttribute("doctor", testDoctor);
-        verify(model).addAttribute("doctor", testDoctor);
-        verify(model).addAttribute("appointments", appointments);
-    }
-
-    @Test
-    void testListAppointments_NoDoctorFound() {
+    void testListAppointments_NoDoctorInSession() {
         // Given
         when(session.getAttribute("doctor")).thenReturn(null);
 
         // When
-        String result = doctorController.listAppointments(null, session, model);
+        String result = doctorController.listAppointments(session, model);
 
         // Then
         assertEquals("redirect:/doctor/login", result);
@@ -335,7 +284,7 @@ class DoctorControllerTest {
         when(appointmentService.getAppointmentsByDoctor(testDoctor.getDoctorId())).thenReturn(appointments);
 
         // When
-        String result = doctorController.calendar(null, session, model);
+        String result = doctorController.calendar(session, model);
 
         // Then
         assertEquals("doctor/calendar", result);
@@ -350,7 +299,7 @@ class DoctorControllerTest {
         when(session.getAttribute("doctor")).thenReturn(null);
 
         // When
-        String result = doctorController.calendar(null, session, model);
+        String result = doctorController.calendar(session, model);
 
         // Then
         assertEquals("redirect:/doctor/login", result);
@@ -363,7 +312,7 @@ class DoctorControllerTest {
         when(session.getAttribute("doctor")).thenReturn(testDoctor);
 
         // When
-        String result = doctorController.profile(null, session, model);
+        String result = doctorController.profile(session, model);
 
         // Then
         assertEquals("doctor/profile", result);
@@ -377,7 +326,7 @@ class DoctorControllerTest {
         when(session.getAttribute("doctor")).thenReturn(null);
 
         // When
-        String result = doctorController.profile(null, session, model);
+        String result = doctorController.profile(session, model);
 
         // Then
         assertEquals("redirect:/doctor/login", result);
@@ -462,7 +411,7 @@ class DoctorControllerTest {
         when(prescriptionService.getPrescriptionsByDoctor(testDoctor.getDoctorId())).thenReturn(prescriptions);
 
         // When
-        String result = doctorController.showDashboard(null, null, session, model);
+        String result = doctorController.showDashboard(null, session, model);
 
         // Then
         assertEquals("doctor/doctor-dashboard", result);

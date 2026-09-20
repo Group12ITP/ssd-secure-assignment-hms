@@ -454,7 +454,7 @@ class PrescriptionServiceTest {
                 .thenReturn(expectedPrescriptions);
 
         // When
-        List<Prescription> result = prescriptionService.getPrescriptionsByPatientId(patientId);
+        List<Prescription> result = prescriptionService.getPrescriptionsByPatient(patientId);
 
         // Then
         assertNotNull(result);
